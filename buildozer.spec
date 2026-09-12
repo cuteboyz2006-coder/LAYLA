@@ -1,4 +1,5 @@
 [app]
+title = Layla
 # Layla Personal AI
 # Basic Kivy Android project
 
