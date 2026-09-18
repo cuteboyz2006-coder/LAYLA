@@ -20,7 +20,6 @@ android.ndk_api = 21
 android.ndk = 25b
 android.archs = arm64-v8a
 android.accept_sdk_license = True 
-requirements = python3,kivy
 android.permissions = INTERNET,RECORD_AUDIO
 
 [buildozer]
