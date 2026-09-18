@@ -1,43 +1,76 @@
-import os
-
 from kivy.app import App
-from kivy.metrics import dp
 from kivy.core.window import Window
-from kivy.utils import platform
+from kivy.metrics import dp
+from kivy.graphics import Color, RoundedRectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.widget import Widget
+from kivy.utils import platform
+
+Window.clearcolor = (0.01, 0.005, 0.02, 1)
 
 
-Window.clearcolor = (0.035, 0.025, 0.07, 1)
-
-
-class MessageLabel(Label):
-    def __init__(self, sender, message, **kwargs):
-        super().__init__(**kwargs)
-
-        self.text = f"{sender}\n{message}"
-        self.markup = False
-        self.font_size = dp(16)
-        self.color = (0.94, 0.94, 0.98, 1)
-        self.size_hint_y = None
-        self.padding = (dp(14), dp(12))
-        self.text_size = (dp(320), None)
-
-        if sender == "Layla":
-            self.text_size = (dp(320), None)
-        else:
-            self.text_size = (dp(320), None)
-
-        self.bind(
-            texture_size=self.update_height
+class Bubble(BoxLayout):
+    def __init__(self, text, is_user=False, **kwargs):
+        super().__init__(
+            orientation="vertical",
+            padding=[dp(16), dp(10), dp(16), dp(10)],
+            spacing=dp(4),
+            size_hint_y=None,
+            **kwargs
         )
 
-    def update_height(self, instance, value):
-        self.height = value[1] + dp(18)
+        self.is_user = is_user
+
+        name = Label(
+            text="You" if is_user else "Layla",
+            color=(0.75, 0.55, 1, 1) if not is_user else (0.9, 0.9, 1, 1),
+            font_size=dp(14),
+            bold=True,
+            size_hint_y=None,
+            height=dp(22),
+            halign="left",
+        )
+
+        message = Label(
+            text=text,
+            color=(0.95, 0.95, 1, 1),
+            font_size=dp(17),
+            size_hint_y=None,
+            halign="left",
+            valign="top",
+        )
+
+        message.text_size = (dp(290), None)
+
+        def update_height(instance, value):
+            instance.height = value[1] + dp(4)
+
+        message.bind(texture_size=update_height)
+
+        self.add_widget(name)
+        self.add_widget(message)
+
+        with self.canvas.before:
+            if is_user:
+                Color(0.20, 0.12, 0.45, 1)
+            else:
+                Color(0.07, 0.07, 0.13, 1)
+
+            self.bg = RoundedRectangle(
+                pos=self.pos,
+                size=self.size,
+                radius=[dp(22)]
+            )
+
+        self.bind(pos=self.update_bg, size=self.update_bg)
+
+    def update_bg(self, *args):
+        self.bg.pos = self.pos
+        self.bg.size = self.size
 
 
 class Layla(App):
@@ -46,185 +79,156 @@ class Layla(App):
 
         root = BoxLayout(
             orientation="vertical",
-            padding=dp(10),
+            padding=[dp(14), dp(10), dp(14), dp(12)],
             spacing=dp(8)
         )
 
-        # ---------- HEADER ----------
-
+        # HEADER
         header = BoxLayout(
+            orientation="vertical",
             size_hint_y=None,
-            height=dp(65),
-            spacing=dp(10)
-        )
-
-        avatar_path = os.path.join(
-            os.path.dirname(__file__),
-            "avatar.png"
-        )
-
-        if os.path.exists(avatar_path):
-            from kivy.uix.image import Image
-
-            avatar = Image(
-                source=avatar_path,
-                size_hint_x=None,
-                width=dp(50)
-            )
-
-            header.add_widget(avatar)
-
-        title_box = BoxLayout(
-            orientation="vertical"
+            height=dp(90)
         )
 
         title = Label(
             text="LAYLA",
-            font_size=dp(22),
+            font_size=dp(30),
             bold=True,
-            color=(0.95, 0.85, 1, 1),
-            halign="left"
+            color=(0.85, 0.65, 1, 1)
         )
 
         subtitle = Label(
             text="Personal AI Assistant",
-            font_size=dp(12),
-            color=(0.65, 0.62, 0.72, 1),
-            halign="left"
+            font_size=dp(17),
+            color=(0.55, 0.52, 0.62, 1)
         )
 
-        title_box.add_widget(title)
-        title_box.add_widget(subtitle)
-
-        header.add_widget(title_box)
+        header.add_widget(title)
+        header.add_widget(subtitle)
 
         root.add_widget(header)
 
-        # ---------- CHAT ----------
-
-        self.chat_box = BoxLayout(
-            orientation="vertical",
-            spacing=dp(10),
-            size_hint_y=None,
-            padding=(dp(5), dp(10))
-        )
-
-        self.chat_box.bind(
-            minimum_height=self.chat_box.setter("height")
-        )
-
+        # CHAT
         scroll = ScrollView(
-            do_scroll_x=False
+            do_scroll_x=False,
+            bar_width=dp(3)
         )
 
-        scroll.add_widget(self.chat_box)
+        self.chat = BoxLayout(
+            orientation="vertical",
+            spacing=dp(12),
+            size_hint_y=None
+        )
 
+        self.chat.bind(
+            minimum_height=self.chat.setter("height")
+        )
+
+        scroll.add_widget(self.chat)
         root.add_widget(scroll)
 
-        self.scroll = scroll
-
-        # ---------- INPUT ----------
-
-        input_area = BoxLayout(
+        # INPUT AREA
+        bottom = BoxLayout(
             size_hint_y=None,
-            height=dp(55),
-            spacing=dp(6)
+            height=dp(58),
+            spacing=dp(8)
         )
 
         self.message = TextInput(
             hint_text="Message Layla...",
             multiline=False,
-            font_size=dp(16),
-            padding=(dp(14), dp(14))
+            font_size=dp(17),
+            padding=[dp(15), dp(15)],
+            background_normal="",
+            background_color=(0.07, 0.07, 0.13, 1),
+            foreground_color=(0.95, 0.95, 1, 1),
+            hint_text_color=(0.55, 0.55, 0.65, 1)
         )
 
-        self.message.bind(
-            on_text_validate=self.send_message
-        )
-
-        voice_button = Button(
+        mic = Button(
             text="MIC",
             size_hint_x=None,
-            width=dp(65),
-            font_size=dp(13)
+            width=dp(78),
+            font_size=dp(15),
+            background_normal="",
+            background_color=(0.28, 0.16, 0.55, 1)
         )
 
-        voice_button.bind(
-            on_press=self.voice_input
-        )
-
-        send_button = Button(
+        send = Button(
             text="SEND",
             size_hint_x=None,
-            width=dp(75),
-            font_size=dp(13)
+            width=dp(88),
+            font_size=dp(15),
+            background_normal="",
+            background_color=(0.38, 0.20, 0.75, 1)
         )
 
-        send_button.bind(
-            on_press=self.send_message
-        )
+        send.bind(on_press=self.send_message)
+        mic.bind(on_press=self.voice_input)
 
-        input_area.add_widget(self.message)
-        input_area.add_widget(voice_button)
-        input_area.add_widget(send_button)
+        bottom.add_widget(self.message)
+        bottom.add_widget(mic)
+        bottom.add_widget(send)
 
-        root.add_widget(input_area)
-
-        # ---------- WELCOME ----------
+        root.add_widget(bottom)
 
         self.add_message(
-            "Layla",
-            "Hello! Main Layla hoon. Main tumhari personal AI assistant hoon."
+            "Hello! Main Layla hoon.\n"
+            "Main tumhari personal AI assistant hoon.\n"
+            "Aaj tumse kya baat karni hai?",
+            False
         )
 
         return root
 
-    def add_message(self, sender, message):
+    def add_message(self, text, is_user):
 
-        label = MessageLabel(
-            sender,
-            message
+        row = BoxLayout(
+            size_hint_y=None,
+            padding=[dp(0), dp(0)],
         )
 
-        self.chat_box.add_widget(label)
-
-        self.scroll_to_bottom()
-
-    def scroll_to_bottom(self):
-
-        def do_scroll(dt):
-            self.scroll.scroll_y = 0
-
-        from kivy.clock import Clock
-
-        Clock.schedule_once(
-            do_scroll,
-            0.1
+        bubble = Bubble(
+            text=text,
+            is_user=is_user,
+            size_hint_x=None,
+            width=dp(320)
         )
+
+        if is_user:
+            row.add_widget(Widget())
+            row.add_widget(bubble)
+        else:
+            row.add_widget(bubble)
+            row.add_widget(Widget())
+
+        self.chat.add_widget(row)
 
     def ai_reply(self, message):
 
         msg = message.lower().strip()
 
-        if msg in ["hi", "hello", "hey"]:
-            return "Hello! Kaise ho? Main Layla hoon."
+        if msg in ["hi", "hello", "hey", "hii"]:
+            return "Hey! 😊 Kaise ho?"
 
-        if "tumhara naam" in msg:
-            return "Mera naam Layla hai."
+        if "tumhara naam" in msg or "your name" in msg:
+            return "Mera naam Layla hai.\nMain tumhari personal AI assistant hoon."
 
-        if "kaise ho" in msg:
-            return "Main bilkul ready hoon!"
+        if "kaise ho" in msg or "how are you" in msg:
+            return "Main bilkul ready hoon! 😄\nTum batao, kya karna hai?"
 
         if "kya kar sakti ho" in msg:
             return (
                 "Main tumhare questions ka answer de sakti hoon, "
-                "voice mein baat kar sakti hoon aur AI assistant ke "
-                "roop mein kaam kar sakti hoon."
+                "information provide kar sakti hoon aur voice mein baat kar sakti hoon."
             )
 
+        if "thank" in msg or "thanks" in msg:
+            return "You're welcome! 😊\nKoi aur baat?"
+
         return (
-            "Maine tumhara message receive kar liya. "
-            "Mera real AI brain next version mein connect karenge."
+            "Maine tumhara message receive kar liya.\n"
+            "Real AI brain next version mein connect karenge."
         )
 
     def send_message(self, instance):
@@ -234,124 +238,64 @@ class Layla(App):
         if not text:
             return
 
-        self.add_message(
-            "You",
-            text
-        )
+        self.add_message(text, True)
 
         reply = self.ai_reply(text)
 
-        self.add_message(
-            "Layla",
-            reply
-        )
-
-        self.speak(reply)
+        self.add_message(reply, False)
 
         self.message.text = ""
 
     def voice_input(self, instance):
 
-        if platform != "android":
-            self.add_message(
-                "Layla",
-                "Voice input Android device par available hoga."
-            )
-            return
+        # Existing working voice function
+        if platform == "android":
 
-        try:
+            try:
+                from jnius import autoclass
 
-            from jnius import autoclass
+                PythonActivity = autoclass(
+                    "org.kivy.android.PythonActivity"
+                )
 
-            PythonActivity = autoclass(
-                "org.kivy.android.PythonActivity"
-            )
+                Intent = autoclass(
+                    "android.content.Intent"
+                )
 
-            Intent = autoclass(
-                "android.content.Intent"
-            )
+                RecognizerIntent = autoclass(
+                    "android.speech.RecognizerIntent"
+                )
 
-            RecognizerIntent = autoclass(
-                "android.speech.RecognizerIntent"
-            )
+                intent = Intent(
+                    RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+                )
 
-            intent = Intent(
-                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
-            )
+                intent.putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                )
 
-            intent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-            )
+                intent.putExtra(
+                    RecognizerIntent.EXTRA_PROMPT,
+                    "Speak to Layla"
+                )
 
-            intent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE,
-                "hi-IN"
-            )
+                PythonActivity.mActivity.startActivityForResult(
+                    intent,
+                    100
+                )
 
-            intent.putExtra(
-                RecognizerIntent.EXTRA_PROMPT,
-                "Layla se bolo..."
-            )
+                self.add_message("Listening...", False)
 
-            PythonActivity.mActivity.startActivityForResult(
-                intent,
-                1001
-            )
-
-            self.add_message(
-                "Layla",
-                "Listening..."
-            )
-
-        except Exception:
-            self.add_message(
-                "Layla",
-                "Voice input start nahi ho paya."
-            )
-
-    def speak(self, text):
-
-        if platform != "android":
-            return
-
-        try:
-
-            from jnius import autoclass
-
-            PythonActivity = autoclass(
-                "org.kivy.android.PythonActivity"
-            )
-
-            TextToSpeech = autoclass(
-                "android.speech.tts.TextToSpeech"
-            )
-
-            Locale = autoclass(
-                "java.util.Locale"
-            )
-
-            activity = PythonActivity.mActivity
-
-            tts = TextToSpeech(
-                activity,
-                None
-            )
-
-            tts.setLanguage(
-                Locale("en", "IN")
-            )
-
-            tts.speak(
-                text,
-                TextToSpeech.QUEUE_FLUSH,
-                None,
-                "LAYLA"
-            )
-
-        except Exception:
-            pass
+            except Exception:
+                self.add_message(
+                    "Voice input start nahi ho paya.",
+                    False
+                )
 
 
 if __name__ == "__main__":
     Layla().run()
+            
+
+            
