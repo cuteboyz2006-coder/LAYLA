@@ -14,6 +14,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.widget import Widget
 from kivy.utils import platform
 
+
 Window.clearcolor = (0.01, 0.005, 0.02, 1)
 
 
@@ -24,17 +25,20 @@ Window.clearcolor = (0.01, 0.005, 0.02, 1)
 class OfflineBrain:
 
     def __init__(self):
+
         self.file = os.path.join(
             App.get_running_app().user_data_dir,
             "knowledge.json"
         )
 
         self.knowledge = {}
+
         self.load()
 
     def load(self):
 
         try:
+
             if os.path.exists(self.file):
 
                 with open(
@@ -46,11 +50,13 @@ class OfflineBrain:
                     self.knowledge = json.load(f)
 
         except Exception:
+
             self.knowledge = {}
 
     def save(self):
 
         try:
+
             os.makedirs(
                 os.path.dirname(self.file),
                 exist_ok=True
@@ -70,6 +76,7 @@ class OfflineBrain:
                 )
 
         except Exception:
+
             pass
 
     def teach(self, question, answer):
@@ -77,6 +84,7 @@ class OfflineBrain:
         question = question.strip().lower()
 
         if not question or not answer.strip():
+
             return False
 
         self.knowledge[question] = answer.strip()
@@ -108,17 +116,21 @@ class OfflineBrain:
         msg = self.normalize(message)
 
         if not msg:
+
             return None
 
         # Exact match
         if msg in self.knowledge:
+
             return self.knowledge[msg]
 
         # Word matching
         best_answer = None
         best_score = 0
 
-        msg_words = set(msg.split())
+        msg_words = set(
+            msg.split()
+        )
 
         for question, answer in self.knowledge.items():
 
@@ -127,13 +139,17 @@ class OfflineBrain:
             )
 
             if not q_words:
+
                 continue
 
-            common = msg_words.intersection(q_words)
+            common = msg_words.intersection(
+                q_words
+            )
 
             score = len(common) / len(q_words)
 
             if score > best_score and score >= 0.45:
+
                 best_score = score
                 best_answer = answer
 
@@ -213,6 +229,7 @@ class Bubble(BoxLayout):
         with self.canvas.before:
 
             if is_user:
+
                 Color(
                     0.20,
                     0.12,
@@ -221,6 +238,7 @@ class Bubble(BoxLayout):
                 )
 
             else:
+
                 Color(
                     0.07,
                     0.07,
@@ -246,7 +264,7 @@ class Bubble(BoxLayout):
 
 
 # =========================================================
-# LAYLA
+# LAYLA APP
 # =========================================================
 
 class Layla(App):
@@ -266,7 +284,9 @@ class Layla(App):
             spacing=dp(8)
         )
 
-        # ---------------- HEADER ----------------
+        # =================================================
+        # HEADER
+        # =================================================
 
         header = BoxLayout(
             orientation="vertical",
@@ -292,7 +312,9 @@ class Layla(App):
 
         root.add_widget(header)
 
-        # ---------------- CHAT ----------------
+        # =================================================
+        # CHAT
+        # =================================================
 
         scroll = ScrollView(
             do_scroll_x=False,
@@ -317,7 +339,9 @@ class Layla(App):
 
         root.add_widget(scroll)
 
-        # ---------------- BUTTON ROW ----------------
+        # =================================================
+        # TEACH / BRAIN BUTTONS
+        # =================================================
 
         teach_row = BoxLayout(
             size_hint_y=None,
@@ -367,7 +391,9 @@ class Layla(App):
 
         root.add_widget(teach_row)
 
-        # ---------------- INPUT ----------------
+        # =================================================
+        # INPUT
+        # =================================================
 
         bottom = BoxLayout(
             size_hint_y=None,
@@ -454,7 +480,9 @@ class Layla(App):
 
         root.add_widget(bottom)
 
-        # ---------------- WELCOME ----------------
+        # =================================================
+        # WELCOME
+        # =================================================
 
         self.add_message(
             "Hello! Main Layla hoon. 🧠\n\n"
@@ -466,7 +494,7 @@ class Layla(App):
         return root
 
     # =====================================================
-    # MESSAGE
+    # ADD MESSAGE
     # =====================================================
 
     def add_message(
@@ -486,8 +514,8 @@ class Layla(App):
             width=dp(320)
         )
 
-        # Row height follows bubble
         def update_row(instance, value):
+
             row.height = bubble.height
 
         bubble.bind(
@@ -518,7 +546,6 @@ class Layla(App):
 
         self.chat.add_widget(row)
 
-        # Scroll to bottom
         self.scroll.scroll_y = 0
 
     # =====================================================
@@ -592,28 +619,40 @@ class Layla(App):
         )
 
     # =====================================================
-    # SEND
+    # SEND MESSAGE
     # =====================================================
+
     def send_message(self, instance):
-    text = self.message.text.strip()
 
-    if not text:
-        return
+        text = self.message.text.strip()
 
-    self.add_message(text, True)
+        if not text:
 
-    # Teaching command
-    if self.process_teaching(text):
+            return
+
+        self.add_message(
+            text,
+            True
+        )
+
+        # Teaching command
+        if self.process_teaching(text):
+
+            self.message.text = ""
+
+            return
+
+        reply = self.ai_reply(text)
+
+        self.add_message(
+            reply,
+            False
+        )
+
         self.message.text = ""
-        return
 
-    reply = self.ai_reply(text)
-
-    self.add_message(reply, False)
-    self.message.text = ""
-    
     # =====================================================
-    # TEACH
+    # TEACH MODE
     # =====================================================
 
     def teach_mode(self, instance):
@@ -717,7 +756,7 @@ class Layla(App):
         )
 
     # =====================================================
-    # VOICE
+    # VOICE INPUT
     # =====================================================
 
     def voice_input(self, instance):
@@ -777,6 +816,12 @@ class Layla(App):
                 "Voice input Android device par available hai.",
                 False
             )
-   
-    if __name__ == "__main__":
+
+
+# =========================================================
+# START APP
+# =========================================================
+
+if __name__ == "__main__":
+
     Layla().run()
