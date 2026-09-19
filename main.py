@@ -595,31 +595,25 @@ class Layla(App):
     # SEND
     # =====================================================
 
-    def send_message(
-        self,
-        instance
-    ):
+    def send_message(self, instance):
 
-        text = self.message.text.strip()
+    text = self.message.text.strip()
 
-        if not text:
-            return
+    if not text:
+        return
 
-        self.add_message(
-            text,
-            True
-        )
+    self.add_message(text, True)
 
-        reply = self.ai_reply(
-            text
-        )
-
-        self.add_message(
-            reply,
-            False
-        )
-
+    # Teaching command
+    if self.process_teaching(text):
         self.message.text = ""
+        return
+
+    reply = self.ai_reply(text)
+
+    self.add_message(reply, False)
+
+    self.message.text = ""
 
     # =====================================================
     # TEACH
@@ -786,16 +780,6 @@ class Layla(App):
                 "Voice input Android device par available hai.",
                 False
             )
-
-    # =====================================================
-    # OVERRIDE SEND FOR TEACHING
-    # =====================================================
-
-    def on_start(self):
-
-        # Replace send handler logic
-        pass
-
-
-if __name__ == "__main__":
+   
+    if __name__ == "__main__":
     Layla().run()
