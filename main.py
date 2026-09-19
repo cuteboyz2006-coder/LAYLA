@@ -594,9 +594,7 @@ class Layla(App):
     # =====================================================
     # SEND
     # =====================================================
-
     def send_message(self, instance):
-
     text = self.message.text.strip()
 
     if not text:
@@ -612,9 +610,8 @@ class Layla(App):
     reply = self.ai_reply(text)
 
     self.add_message(reply, False)
-
     self.message.text = ""
-
+    
     # =====================================================
     # TEACH
     # =====================================================
