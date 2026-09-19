@@ -1,3 +1,7 @@
+import json
+import os
+import re
+
 from kivy.app import App
 from kivy.core.window import Window
 from kivy.metrics import dp
@@ -13,26 +17,172 @@ from kivy.utils import platform
 Window.clearcolor = (0.01, 0.005, 0.02, 1)
 
 
+# =========================================================
+# OFFLINE BRAIN
+# =========================================================
+
+class OfflineBrain:
+
+    def __init__(self):
+        self.file = os.path.join(
+            App.get_running_app().user_data_dir,
+            "knowledge.json"
+        )
+
+        self.knowledge = {}
+        self.load()
+
+    def load(self):
+
+        try:
+            if os.path.exists(self.file):
+
+                with open(
+                    self.file,
+                    "r",
+                    encoding="utf-8"
+                ) as f:
+
+                    self.knowledge = json.load(f)
+
+        except Exception:
+            self.knowledge = {}
+
+    def save(self):
+
+        try:
+            os.makedirs(
+                os.path.dirname(self.file),
+                exist_ok=True
+            )
+
+            with open(
+                self.file,
+                "w",
+                encoding="utf-8"
+            ) as f:
+
+                json.dump(
+                    self.knowledge,
+                    f,
+                    ensure_ascii=False,
+                    indent=2
+                )
+
+        except Exception:
+            pass
+
+    def teach(self, question, answer):
+
+        question = question.strip().lower()
+
+        if not question or not answer.strip():
+            return False
+
+        self.knowledge[question] = answer.strip()
+
+        self.save()
+
+        return True
+
+    def normalize(self, text):
+
+        text = text.lower()
+
+        text = re.sub(
+            r"[^\w\s]",
+            " ",
+            text
+        )
+
+        text = re.sub(
+            r"\s+",
+            " ",
+            text
+        )
+
+        return text.strip()
+
+    def find_answer(self, message):
+
+        msg = self.normalize(message)
+
+        if not msg:
+            return None
+
+        # Exact match
+        if msg in self.knowledge:
+            return self.knowledge[msg]
+
+        # Word matching
+        best_answer = None
+        best_score = 0
+
+        msg_words = set(msg.split())
+
+        for question, answer in self.knowledge.items():
+
+            q_words = set(
+                self.normalize(question).split()
+            )
+
+            if not q_words:
+                continue
+
+            common = msg_words.intersection(q_words)
+
+            score = len(common) / len(q_words)
+
+            if score > best_score and score >= 0.45:
+                best_score = score
+                best_answer = answer
+
+        return best_answer
+
+    def count(self):
+
+        return len(self.knowledge)
+
+
+# =========================================================
+# CHAT BUBBLE
+# =========================================================
+
 class Bubble(BoxLayout):
-    def __init__(self, text, is_user=False, **kwargs):
+
+    def __init__(
+        self,
+        text,
+        is_user=False,
+        **kwargs
+    ):
+
         super().__init__(
             orientation="vertical",
-            padding=[dp(16), dp(10), dp(16), dp(10)],
+            padding=[
+                dp(16),
+                dp(10),
+                dp(16),
+                dp(10)
+            ],
             spacing=dp(4),
             size_hint_y=None,
             **kwargs
         )
 
-        self.is_user = is_user
-
         name = Label(
             text="You" if is_user else "Layla",
-            color=(0.75, 0.55, 1, 1) if not is_user else (0.9, 0.9, 1, 1),
+            color=(
+                (0.75, 0.55, 1, 1)
+                if not is_user
+                else
+                (0.9, 0.9, 1, 1)
+            ),
             font_size=dp(14),
             bold=True,
             size_hint_y=None,
             height=dp(22),
-            halign="left",
+            halign="left"
         )
 
         message = Label(
@@ -41,24 +191,42 @@ class Bubble(BoxLayout):
             font_size=dp(17),
             size_hint_y=None,
             halign="left",
-            valign="top",
+            valign="top"
         )
 
-        message.text_size = (dp(290), None)
+        message.text_size = (
+            dp(280),
+            None
+        )
 
         def update_height(instance, value):
-            instance.height = value[1] + dp(4)
 
-        message.bind(texture_size=update_height)
+            instance.height = value[1] + dp(8)
+
+        message.bind(
+            texture_size=update_height
+        )
 
         self.add_widget(name)
         self.add_widget(message)
 
         with self.canvas.before:
+
             if is_user:
-                Color(0.20, 0.12, 0.45, 1)
+                Color(
+                    0.20,
+                    0.12,
+                    0.45,
+                    1
+                )
+
             else:
-                Color(0.07, 0.07, 0.13, 1)
+                Color(
+                    0.07,
+                    0.07,
+                    0.13,
+                    1
+                )
 
             self.bg = RoundedRectangle(
                 pos=self.pos,
@@ -66,24 +234,40 @@ class Bubble(BoxLayout):
                 radius=[dp(22)]
             )
 
-        self.bind(pos=self.update_bg, size=self.update_bg)
+        self.bind(
+            pos=self.update_bg,
+            size=self.update_bg
+        )
 
     def update_bg(self, *args):
+
         self.bg.pos = self.pos
         self.bg.size = self.size
 
+
+# =========================================================
+# LAYLA
+# =========================================================
 
 class Layla(App):
 
     def build(self):
 
+        self.brain = OfflineBrain()
+
         root = BoxLayout(
             orientation="vertical",
-            padding=[dp(14), dp(10), dp(14), dp(12)],
+            padding=[
+                dp(14),
+                dp(10),
+                dp(14),
+                dp(12)
+            ],
             spacing=dp(8)
         )
 
-        # HEADER
+        # ---------------- HEADER ----------------
+
         header = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
@@ -98,8 +282,8 @@ class Layla(App):
         )
 
         subtitle = Label(
-            text="Personal AI Assistant",
-            font_size=dp(17),
+            text="Personal AI • Offline Brain",
+            font_size=dp(15),
             color=(0.55, 0.52, 0.62, 1)
         )
 
@@ -108,11 +292,14 @@ class Layla(App):
 
         root.add_widget(header)
 
-        # CHAT
+        # ---------------- CHAT ----------------
+
         scroll = ScrollView(
             do_scroll_x=False,
             bar_width=dp(3)
         )
+
+        self.scroll = scroll
 
         self.chat = BoxLayout(
             orientation="vertical",
@@ -121,13 +308,67 @@ class Layla(App):
         )
 
         self.chat.bind(
-            minimum_height=self.chat.setter("height")
+            minimum_height=self.chat.setter(
+                "height"
+            )
         )
 
         scroll.add_widget(self.chat)
+
         root.add_widget(scroll)
 
-        # INPUT AREA
+        # ---------------- BUTTON ROW ----------------
+
+        teach_row = BoxLayout(
+            size_hint_y=None,
+            height=dp(42),
+            spacing=dp(7)
+        )
+
+        teach_button = Button(
+            text="🧠 TEACH",
+            font_size=dp(14),
+            background_normal="",
+            background_color=(
+                0.25,
+                0.12,
+                0.50,
+                1
+            )
+        )
+
+        brain_button = Button(
+            text="BRAIN",
+            font_size=dp(14),
+            background_normal="",
+            background_color=(
+                0.15,
+                0.10,
+                0.30,
+                1
+            )
+        )
+
+        teach_button.bind(
+            on_press=self.teach_mode
+        )
+
+        brain_button.bind(
+            on_press=self.show_brain
+        )
+
+        teach_row.add_widget(
+            teach_button
+        )
+
+        teach_row.add_widget(
+            brain_button
+        )
+
+        root.add_widget(teach_row)
+
+        # ---------------- INPUT ----------------
+
         bottom = BoxLayout(
             size_hint_y=None,
             height=dp(58),
@@ -138,54 +379,104 @@ class Layla(App):
             hint_text="Message Layla...",
             multiline=False,
             font_size=dp(17),
-            padding=[dp(15), dp(15)],
+            padding=[
+                dp(15),
+                dp(15)
+            ],
             background_normal="",
-            background_color=(0.07, 0.07, 0.13, 1),
-            foreground_color=(0.95, 0.95, 1, 1),
-            hint_text_color=(0.55, 0.55, 0.65, 1)
+            background_color=(
+                0.07,
+                0.07,
+                0.13,
+                1
+            ),
+            foreground_color=(
+                0.95,
+                0.95,
+                1,
+                1
+            ),
+            hint_text_color=(
+                0.55,
+                0.55,
+                0.65,
+                1
+            )
         )
 
         mic = Button(
             text="MIC",
             size_hint_x=None,
-            width=dp(78),
-            font_size=dp(15),
+            width=dp(70),
+            font_size=dp(14),
             background_normal="",
-            background_color=(0.28, 0.16, 0.55, 1)
+            background_color=(
+                0.28,
+                0.16,
+                0.55,
+                1
+            )
         )
 
         send = Button(
             text="SEND",
             size_hint_x=None,
-            width=dp(88),
-            font_size=dp(15),
+            width=dp(78),
+            font_size=dp(14),
             background_normal="",
-            background_color=(0.38, 0.20, 0.75, 1)
+            background_color=(
+                0.38,
+                0.20,
+                0.75,
+                1
+            )
         )
 
-        send.bind(on_press=self.send_message)
-        mic.bind(on_press=self.voice_input)
+        send.bind(
+            on_press=self.send_message
+        )
 
-        bottom.add_widget(self.message)
-        bottom.add_widget(mic)
-        bottom.add_widget(send)
+        mic.bind(
+            on_press=self.voice_input
+        )
+
+        bottom.add_widget(
+            self.message
+        )
+
+        bottom.add_widget(
+            mic
+        )
+
+        bottom.add_widget(
+            send
+        )
 
         root.add_widget(bottom)
 
+        # ---------------- WELCOME ----------------
+
         self.add_message(
-            "Hello! Main Layla hoon.\n"
-            "Main tumhari personal AI assistant hoon.\n"
-            "Aaj tumse kya baat karni hai?",
+            "Hello! Main Layla hoon. 🧠\n\n"
+            "Ab mere paas Offline Learning Brain hai.\n"
+            "Tum mujhe cheezein sikha sakte ho.",
             False
         )
 
         return root
 
-    def add_message(self, text, is_user):
+    # =====================================================
+    # MESSAGE
+    # =====================================================
+
+    def add_message(
+        self,
+        text,
+        is_user
+    ):
 
         row = BoxLayout(
-            size_hint_y=None,
-            padding=[dp(0), dp(0)],
+            size_hint_y=None
         )
 
         bubble = Bubble(
@@ -195,63 +486,255 @@ class Layla(App):
             width=dp(320)
         )
 
+        # Row height follows bubble
+        def update_row(instance, value):
+            row.height = bubble.height
+
+        bubble.bind(
+            height=update_row
+        )
+
+        row.height = bubble.height
+
         if is_user:
-            row.add_widget(Widget())
-            row.add_widget(bubble)
+
+            row.add_widget(
+                Widget()
+            )
+
+            row.add_widget(
+                bubble
+            )
+
         else:
-            row.add_widget(bubble)
-            row.add_widget(Widget())
+
+            row.add_widget(
+                bubble
+            )
+
+            row.add_widget(
+                Widget()
+            )
 
         self.chat.add_widget(row)
+
+        # Scroll to bottom
+        self.scroll.scroll_y = 0
+
+    # =====================================================
+    # AI REPLY
+    # =====================================================
 
     def ai_reply(self, message):
 
         msg = message.lower().strip()
 
-        if msg in ["hi", "hello", "hey", "hii"]:
-            return "Hey! 😊 Kaise ho?"
-
-        if "tumhara naam" in msg or "your name" in msg:
-            return "Mera naam Layla hai.\nMain tumhari personal AI assistant hoon."
-
-        if "kaise ho" in msg or "how are you" in msg:
-            return "Main bilkul ready hoon! 😄\nTum batao, kya karna hai?"
-
-        if "kya kar sakti ho" in msg:
-            return (
-                "Main tumhare questions ka answer de sakti hoon, "
-                "information provide kar sakti hoon aur voice mein baat kar sakti hoon."
-            )
-
-        if "thank" in msg or "thanks" in msg:
-            return "You're welcome! 😊\nKoi aur baat?"
-
-        return (
-            "Maine tumhara message receive kar liya.\n"
-            "Real AI brain next version mein connect karenge."
+        # First search learned knowledge
+        learned = self.brain.find_answer(
+            message
         )
 
-    def send_message(self, instance):
+        if learned:
+
+            return learned
+
+        # Basic built-in brain
+        if msg in [
+            "hi",
+            "hello",
+            "hey",
+            "hii"
+        ]:
+
+            return (
+                "Hey! 😊\n"
+                "Main Layla hoon."
+            )
+
+        if (
+            "tumhara naam" in msg
+            or
+            "your name" in msg
+        ):
+
+            return (
+                "Mera naam Layla hai.\n"
+                "Main tumhari personal AI hoon."
+            )
+
+        if (
+            "kaise ho" in msg
+            or
+            "how are you" in msg
+        ):
+
+            return (
+                "Main ready hoon! 😄\n"
+                "Mujhe kuch naya sikhao."
+            )
+
+        if (
+            "brain" in msg
+            and
+            "kitna" in msg
+        ):
+
+            return (
+                f"Mere brain me "
+                f"{self.brain.count()} "
+                f"learned memories hain."
+            )
+
+        return (
+            "Mujhe iska answer abhi nahi pata. 🤔\n\n"
+            "Tum mujhe sikha sakte ho:\n"
+            "🧠 TEACH button dabao."
+        )
+
+    # =====================================================
+    # SEND
+    # =====================================================
+
+    def send_message(
+        self,
+        instance
+    ):
 
         text = self.message.text.strip()
 
         if not text:
             return
 
-        self.add_message(text, True)
+        self.add_message(
+            text,
+            True
+        )
 
-        reply = self.ai_reply(text)
+        reply = self.ai_reply(
+            text
+        )
 
-        self.add_message(reply, False)
+        self.add_message(
+            reply,
+            False
+        )
 
         self.message.text = ""
 
+    # =====================================================
+    # TEACH
+    # =====================================================
+
+    def teach_mode(self, instance):
+
+        self.add_message(
+            "🧠 Teaching mode:\n\n"
+            "Is format me message bhejo:\n\n"
+            "teach: question = answer\n\n"
+            "Example:\n"
+            "teach: mera favourite game kya hai = Free Fire",
+            False
+        )
+
+        self.message.text = ""
+
+    # =====================================================
+    # HANDLE TEACH COMMAND
+    # =====================================================
+
+    def process_teaching(
+        self,
+        text
+    ):
+
+        if not text.lower().startswith(
+            "teach:"
+        ):
+
+            return False
+
+        data = text[6:].strip()
+
+        if "=" not in data:
+
+            self.add_message(
+                "Teaching format galat hai.\n\n"
+                "Example:\n"
+                "teach: mera naam kya hai = Cute Boy",
+                False
+            )
+
+            return True
+
+        question, answer = data.split(
+            "=",
+            1
+        )
+
+        question = question.strip()
+        answer = answer.strip()
+
+        if not question or not answer:
+
+            self.add_message(
+                "Question aur answer dono required hain.",
+                False
+            )
+
+            return True
+
+        self.brain.teach(
+            question,
+            answer
+        )
+
+        self.add_message(
+            "🧠 Learned!\n\n"
+            f"Question: {question}\n"
+            f"Answer: {answer}",
+            False
+        )
+
+        return True
+
+    # =====================================================
+    # BRAIN STATUS
+    # =====================================================
+
+    def show_brain(self, instance):
+
+        count = self.brain.count()
+
+        if count == 0:
+
+            text = (
+                "🧠 Brain empty hai.\n\n"
+                "TEACH button se mujhe kuch sikhao."
+            )
+
+        else:
+
+            text = (
+                f"🧠 Layla Offline Brain\n\n"
+                f"Learned knowledge: {count}\n\n"
+                "Ye knowledge phone par save hai."
+            )
+
+        self.add_message(
+            text,
+            False
+        )
+
+    # =====================================================
+    # VOICE
+    # =====================================================
+
     def voice_input(self, instance):
 
-        # Existing working voice function
         if platform == "android":
 
             try:
+
                 from jnius import autoclass
 
                 PythonActivity = autoclass(
@@ -285,17 +768,34 @@ class Layla(App):
                     100
                 )
 
-                self.add_message("Listening...", False)
+                self.add_message(
+                    "🎙️ Listening...",
+                    False
+                )
 
             except Exception:
+
                 self.add_message(
                     "Voice input start nahi ho paya.",
                     False
                 )
 
+        else:
+
+            self.add_message(
+                "Voice input Android device par available hai.",
+                False
+            )
+
+    # =====================================================
+    # OVERRIDE SEND FOR TEACHING
+    # =====================================================
+
+    def on_start(self):
+
+        # Replace send handler logic
+        pass
+
 
 if __name__ == "__main__":
     Layla().run()
-            
-
-            
