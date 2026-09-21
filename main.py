@@ -1,6 +1,6 @@
-import json
 import os
 import re
+import json
 import ast
 import operator
 import math
@@ -17,6 +17,13 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.popup import Popup
+
+try:
+    from plyer import filechooser
+except Exception:
+    filechooser = None
+
 
 # ============================================================
 # SAFE MATH
@@ -36,43 +43,42 @@ class SafeMath:
     }
 
     @classmethod
-    def calc(cls, expression):
-        expression = expression.strip()
+    def evaluate(cls, expression):
+        expression = expression.replace("×", "*")
+        expression = expression.replace("÷", "/")
+        expression = expression.replace("^", "**")
 
-        if len(expression) > 100:
-            return None
-
-        try:
-            node = ast.parse(expression, mode="eval").body
-            return cls._eval(node)
-        except Exception:
-            return None
+        tree = ast.parse(expression, mode="eval")
+        return cls._eval(tree.body)
 
     @classmethod
     def _eval(cls, node):
         if isinstance(node, ast.Constant):
             if isinstance(node.value, (int, float)):
                 return node.value
-            raise ValueError()
+            raise ValueError("Invalid number")
+
+        if isinstance(node, ast.Num):
+            return node.n
 
         if isinstance(node, ast.BinOp):
             if type(node.op) not in cls.OPS:
-                raise ValueError()
+                raise ValueError("Operator not allowed")
 
             left = cls._eval(node.left)
             right = cls._eval(node.right)
 
-            if isinstance(node.op, ast.Pow) and abs(right) > 20:
-                raise ValueError()
+            if isinstance(node.op, ast.Pow) and abs(right) > 100:
+                raise ValueError("Power too large")
 
             return cls.OPS[type(node.op)](left, right)
 
         if isinstance(node, ast.UnaryOp):
             if type(node.op) not in cls.OPS:
-                raise ValueError()
+                raise ValueError("Operator not allowed")
             return cls.OPS[type(node.op)](cls._eval(node.operand))
 
-        raise ValueError()
+        raise ValueError("Invalid expression")
 
 
 # ============================================================
@@ -81,87 +87,34 @@ class SafeMath:
 
 class TextNormalizer:
 
-    COMMON = {
-        "helo": "hello",
-        "helllo": "hello",
-        "hii": "hi",
-        "hiii": "hi",
-        "hllo": "hello",
-        "wat": "what",
-        "wht": "what",
-        "whats": "what is",
-        "whts": "what is",
-        "wher": "where",
-        "wer": "where",
-        "whre": "where",
-        "hw": "how",
-        "hwo": "how",
-        "r": "are",
-        "u": "you",
-        "ur": "your",
-        "yr": "your",
-        "pls": "please",
-        "plz": "please",
-        "thx": "thanks",
-        "tnx": "thanks",
-        "bcoz": "because",
-        "becoz": "because",
-        "coz": "because",
-        "frm": "from",
-        "fr": "for",
-        "abt": "about",
-        "btw": "between",
-        "wanna": "want to",
-        "gonna": "going to",
-        "dont": "do not",
-        "cant": "cannot",
-        "wont": "will not",
-        "im": "i am",
-        "iam": "i am",
-        "ive": "i have",
-        "idk": "i do not know",
-        "kya": "kya",
-        "h": "hai",
-        "ha": "hai",
-        "hu": "hoon",
-        "ho": "ho",
-        "kr": "kar",
-        "kro": "karo",
-        "btao": "batao",
-        "btana": "batana",
-        "acha": "achha",
-        "accha": "achha",
-        "kaise": "kaise",
-        "kaisa": "kaisa",
-        "mujhe": "mujhe",
-        "mera": "mera",
-        "meri": "meri",
-        "tumhara": "tumhara",
-        "tumhari": "tumhari",
-    }
+    @staticmethod
+    def normalize(text):
+        text = text.strip().lower()
+        text = re.sub(r"\s+", " ", text)
 
-    @classmethod
-    def normalize(cls, text):
-        text = str(text).strip().lower()
+        replacements = {
+            "hw r u": "how are you",
+            "how r u": "how are you",
+            "how r you": "how are you",
+            "how r u?": "how are you",
+            "hru": "how are you",
+            "kese ho": "kaise ho",
+            "kaisa hai": "kaise ho",
+            "kaisi ho": "kaise ho",
+            "kaise h": "kaise ho",
+            "kaise ho": "kaise ho",
+            "thik ho": "theek ho",
+            "thk ho": "theek ho",
+            "okey": "okay",
+            "okk": "okay",
+            "helo": "hello",
+            "hlo": "hello",
+            "hlw": "hello",
+            "hii": "hi",
+            "heyy": "hey",
+        }
 
-        text = text.replace("×", "*")
-        text = text.replace("÷", "/")
-        text = text.replace("−", "-")
-        text = text.replace("–", "-")
-        text = text.replace("—", "-")
-        text = text.replace("’", "'")
-
-        text = re.sub(r"[!?;,]+", " ", text)
-        text = re.sub(r"\s+", " ", text).strip()
-
-        words = text.split()
-        output = []
-
-        for word in words:
-            clean = re.sub(r"[^a-zA-Z0-9.+*/%^=-]", "", word)
-            output.append(cls.COMMON.get(clean, clean))
-
-        return " ".join(output)
+        return replacements.get(text, text)
 
 
 # ============================================================
@@ -170,39 +123,15 @@ class TextNormalizer:
 
 class SpellCorrector:
 
-    WORDS = {
-        "hello", "hi", "hey", "how", "are", "you", "what", "is",
-        "your", "name", "calculate", "solve", "math", "physics",
-        "chemistry", "biology", "photosynthesis", "mitochondria",
-        "nucleus", "water", "formula", "element", "periodic",
-        "table", "earth", "sun", "moon", "planet", "india",
-        "capital", "computer", "programming", "python", "java",
-        "javascript", "kotlin", "coding", "story", "write",
-        "create", "game", "homework", "quiz", "flashcard",
-        "gravity", "force", "energy", "speed", "distance",
-        "circle", "area", "volume", "triangle", "square",
-        "rectangle", "good", "morning", "night", "thanks",
-        "thank", "bye", "please", "help", "learn", "remember",
-        "favourite", "favorite", "food", "colour", "color",
-        "weather", "time", "date", "free", "fire", "gaming"
-    }
-
-    @classmethod
-    def correct_word(cls, word):
-        if len(word) < 3 or word.isdigit():
-            return word
-
-        if word in cls.WORDS:
-            return word
-
-        matches = difflib.get_close_matches(
-            word,
-            cls.WORDS,
-            n=1,
-            cutoff=0.78
-        )
-
-        return matches[0] if matches else word
+    WORDS = [
+        "hello", "hi", "hey", "kaise", "ho", "theek",
+        "kya", "hai", "haan", "nahi", "mera", "meri",
+        "naam", "tumhara", "time", "date", "help",
+        "math", "study", "homework", "physics", "chemistry",
+        "biology", "coding", "python", "java", "javascript",
+        "story", "script", "caption", "game", "gaming",
+        "thank", "thanks", "good", "morning", "night"
+    ]
 
     @classmethod
     def correct(cls, text):
@@ -210,70 +139,34 @@ class SpellCorrector:
         result = []
 
         for word in parts:
-            # Never modify math expressions
-            if re.search(r"[\d+\-*/%^().]", word):
+            clean = re.sub(r"[^a-zA-Z]", "", word.lower())
+
+            if len(clean) < 4:
                 result.append(word)
-            else:
-                result.append(cls.correct_word(word))
+                continue
+
+            match = difflib.get_close_matches(
+                clean,
+                cls.WORDS,
+                n=1,
+                cutoff=0.82
+            )
+
+            if match and match[0] != clean:
+                word = re.sub(
+                    re.escape(clean),
+                    match[0],
+                    word,
+                    flags=re.IGNORECASE
+                )
+
+            result.append(word)
 
         return " ".join(result)
 
 
 # ============================================================
-# CONVERSATION ENGINE
-# ============================================================
-
-class ConversationEngine:
-
-    @staticmethod
-    def solve(text):
-        t = TextNormalizer.normalize(text)
-
-        if re.search(r"\b(hello|hi|hey)\b", t):
-            return random.choice([
-                "Hello 😊",
-                "Hi! Main Layla hoon. Kaise help karun?",
-                "Hey! 😊 Kya karna hai?"
-            ])
-
-        if "how are you" in t or "kaise ho" in t:
-            return "Main bilkul ready hoon 😊 Tum batao, kya karna hai?"
-
-        if "what are you doing" in t:
-            return "Main tumhari baat samajhne aur help karne ke liye ready hoon."
-
-        if "what is your name" in t or "your name" in t:
-            return "Mera naam Layla hai. 🤖"
-
-        if "who are you" in t:
-            return "Main Layla hoon — tumhari personal AI assistant."
-
-        if "what can you do" in t:
-            return (
-                "Main maths, science, coding, general knowledge, "
-                "creative work, conversation aur learning mein help kar sakti hoon."
-            )
-
-        if t in ("thanks", "thank you", "thank"):
-            return "You're welcome 😊"
-
-        if t in ("bye", "goodbye"):
-            return "Bye! 😊 Phir milte hain."
-
-        if "good morning" in t:
-            return "Good morning ☀️"
-
-        if "good night" in t:
-            return "Good night 🌙"
-
-        if t == "help":
-            return "Bas normal language mein apna question bolo. Main khud suitable engine use karungi."
-
-        return None
-
-
-# ============================================================
-# NATURAL CONVERSATION MEMORY
+# AUTOMATIC MEMORY
 # ============================================================
 
 class OfflineBrain:
@@ -284,7 +177,6 @@ class OfflineBrain:
             app.user_data_dir,
             "knowledge.json"
         )
-
         self.data = {}
         self.load()
 
@@ -299,7 +191,6 @@ class OfflineBrain:
     def save(self):
         try:
             os.makedirs(os.path.dirname(self.file), exist_ok=True)
-
             with open(self.file, "w", encoding="utf-8") as f:
                 json.dump(
                     self.data,
@@ -310,178 +201,200 @@ class OfflineBrain:
         except Exception:
             pass
 
-    def learn(self, question, answer):
-        q = TextNormalizer.normalize(question)
-
-        if not q or not answer:
-            return
-
-        self.data[q] = answer
-        self.save()
-
-    def find_answer(self, question):
-        q = TextNormalizer.normalize(question)
-
-        if q in self.data:
-            return self.data[q]
-
-        best = None
-        best_score = 0
-
-        for key, value in self.data.items():
-            score = difflib.SequenceMatcher(
-                None,
-                q,
-                key
-            ).ratio()
-
-            q_words = set(q.split())
-            k_words = set(key.split())
-
-            if q_words and k_words:
-                overlap = len(q_words & k_words) / max(
-                    len(q_words),
-                    len(k_words)
-                )
-                score = max(score, overlap)
-
-            if score > best_score:
-                best_score = score
-                best = value
-
-        if best_score >= 0.72:
-            return best
-
-        return None
-
-    def automatic_learning(self, text):
-        """
-        Useful facts from normal conversation.
-        No Teach button and no teach: command.
-        """
-
+    def learn(self, text):
         original = text.strip()
+        lower = original.lower()
 
         patterns = [
             (
-                r"my name is (.+)",
-                "Your name is {}."
+                r"\bmy name is\s+(.+)",
+                "name"
             ),
             (
-                r"mera naam (.+) hai",
-                "Tumhara naam {} hai."
+                r"\bmera naam\s+(.+)",
+                "name"
             ),
             (
-                r"my favourite game is (.+)",
-                "Your favourite game is {}."
+                r"\bmy favourite game is\s+(.+)",
+                "favourite_game"
             ),
             (
-                r"my favorite game is (.+)",
-                "Your favourite game is {}."
+                r"\bmy favorite game is\s+(.+)",
+                "favourite_game"
             ),
             (
-                r"mera favourite game (.+) hai",
-                "Tumhara favourite game {} hai."
+                r"\bmujhe\s+(.+?)\s+pasand hai",
+                "likes"
             ),
             (
-                r"mera favorite game (.+) hai",
-                "Tumhara favourite game {} hai."
+                r"\bi like\s+(.+)",
+                "likes"
             ),
             (
-                r"my favourite color is (.+)",
-                "Your favourite color is {}."
+                r"\bi love\s+(.+)",
+                "likes"
             ),
             (
-                r"my favorite color is (.+)",
-                "Your favourite color is {}."
-            ),
-            (
-                r"my favorite food is (.+)",
-                "Your favourite food is {}."
-            ),
-            (
-                r"my favourite food is (.+)",
-                "Your favourite food is {}."
-            ),
-            (
-                r"mera favourite food (.+) hai",
-                "Tumhara favourite food {} hai."
+                r"\bi study in\s+(.+)",
+                "school"
             ),
         ]
 
-        low = TextNormalizer.normalize(original)
-
-        for pattern, answer in patterns:
-            match = re.fullmatch(pattern, low)
+        for pattern, key in patterns:
+            match = re.search(pattern, lower)
 
             if match:
                 value = match.group(1).strip()
 
-                if len(value) > 0 and len(value) < 80:
-                    self.learn(original, answer.format(value))
-                    return answer.format(value)
+                if value:
+                    self.data[key] = value
+                    self.save()
+                    return True
+
+        return False
+
+    def answer(self, text):
+        lower = text.lower().strip()
+
+        if "what is my name" in lower:
+            if "name" in self.data:
+                return "Tumhara naam " + str(self.data["name"]) + " hai."
+            return "Tumne abhi tak apna naam nahi bataya."
+
+        if "mera naam kya hai" in lower:
+            if "name" in self.data:
+                return "Tumhara naam " + str(self.data["name"]) + " hai."
+            return "Tumne abhi tak apna naam nahi bataya."
+
+        if "my favourite game" in lower or "my favorite game" in lower:
+            if "favourite_game" in self.data:
+                return (
+                    "Tumhara favourite game "
+                    + str(self.data["favourite_game"])
+                    + " hai."
+                )
+
+        if "what do i like" in lower or "mujhe kya pasand hai" in lower:
+            if "likes" in self.data:
+                return "Tumne bataya tha ki tumhe " + str(
+                    self.data["likes"]
+                ) + " pasand hai."
 
         return None
 
 
 # ============================================================
-# MATH ENGINE
+# CONVERSATION
+# ============================================================
+
+class ConversationEngine:
+
+    @staticmethod
+    def solve(text):
+        t = TextNormalizer.normalize(text)
+
+        greetings = {
+            "hi",
+            "hello",
+            "hey",
+            "hii",
+            "namaste",
+            "namaskar"
+        }
+
+        if t in greetings:
+            return "Hello! Main Layla hoon. Batao, main tumhari kis cheez mein help karun?"
+
+        if t in (
+            "kaise ho",
+            "how are you",
+            "theek ho",
+            "tum kaise ho"
+        ):
+            return "Main bilkul ready hoon. Tum batao, aaj kya karna hai?"
+
+        if t in (
+            "good morning",
+            "gm"
+        ):
+            return "Good morning. Aaj ka din productive banate hain."
+
+        if t in (
+            "good night",
+            "gn"
+        ):
+            return "Good night. Kal phir milte hain."
+
+        if t in (
+            "thank you",
+            "thanks",
+            "thank"
+        ):
+            return "You're welcome."
+
+        if "who are you" in t or "tum kaun ho" in t:
+            return (
+                "Main Layla hoon, tumhari personal AI assistant. "
+                "Main chat, maths, study, coding aur creative tasks "
+                "mein help kar sakti hoon."
+            )
+
+        if "your name" in t or "tumhara naam" in t:
+            return "Mera naam Layla hai."
+
+        if "what can you do" in t or "kya kar sakti ho" in t:
+            return (
+                "Main conversation, maths, study, homework, coding, "
+                "creative writing, reasoning, general knowledge aur "
+                "basic file/photo/video selection mein help kar sakti hoon."
+            )
+
+        return None
+
+
+# ============================================================
+# MATH
 # ============================================================
 
 class MathEngine:
 
     @staticmethod
-    def calculate(text):
+    def solve(text):
         original = text.lower().strip()
 
-        if "percent" in original or "%" in original:
-            match = re.search(
-                r"(\d+(?:\.\d+)?)\s*%\s*(?:of)?\s*(\d+(?:\.\d+)?)",
-                original
-            )
+        expr = original
 
-            if match:
-                a = float(match.group(1))
-                b = float(match.group(2))
-                return str(round(a * b / 100, 8))
+        expr = expr.replace("what is", "")
+        expr = expr.replace("calculate", "")
+        expr = expr.replace("solve", "")
+        expr = expr.replace("equals", "")
+        expr = expr.replace("kitna", "")
+        expr = expr.replace("batao", "")
 
-        t = original
+        expr = expr.strip()
 
-        for phrase in [
-            "what is",
-            "calculate",
-            "solve",
-            "answer",
-            "equals",
-            "kitna hai",
-            "kitna hoga"
-        ]:
-            t = t.replace(phrase, "")
-
-        t = t.strip()
-        t = t.replace("^", "**")
-
-        if not re.fullmatch(
-            r"[\d\s+\-*/().%*]+",
-            t
-        ):
+        if not re.search(r"\d", expr):
             return None
 
-        if not re.search(r"\d", t):
+        if not re.search(r"[\+\-\*\/×÷\^%]", expr):
             return None
 
-        result = SafeMath.calc(t)
-
-        if result is None:
+        if not re.fullmatch(r"[\d\s\+\-\*\/×÷\^\%\(\)\.]+", expr):
             return None
 
-        if isinstance(result, float):
-            if result.is_integer():
-                return str(int(result))
+        try:
+            result = SafeMath.evaluate(expr)
 
-            return str(round(result, 10))
+            if isinstance(result, float):
+                if result.is_integer():
+                    result = int(result)
+                else:
+                    result = round(result, 10)
 
-        return str(result)
+            return "Answer: " + str(result)
+
+        except Exception:
+            return None
 
 
 # ============================================================
@@ -494,79 +407,35 @@ class AdvancedMathEngine:
     def solve(text):
         t = text.lower()
 
-        match = re.search(
-            r"sqrt\s*(\d+(?:\.\d+)?)",
-            t
-        )
+        number = re.search(r"(-?\d+(?:\.\d+)?)", t)
 
-        if match:
-            n = float(match.group(1))
-            return str(round(math.sqrt(n), 8))
+        try:
+            if number:
+                x = float(number.group(1))
 
-        match = re.search(
-            r"factorial\s*(\d+)",
-            t
-        )
+                if "square root" in t or "sqrt" in t:
+                    return "Answer: " + str(math.sqrt(x))
 
-        if match:
-            n = int(match.group(1))
+                if "sin" in t:
+                    return "Answer: " + str(round(math.sin(math.radians(x)), 10))
 
-            if n <= 100:
-                return str(math.factorial(n))
+                if "cos" in t:
+                    return "Answer: " + str(round(math.cos(math.radians(x)), 10))
 
-        match = re.search(
-            r"average\s+of\s+(.+)",
-            t
-        )
+                if "tan" in t:
+                    return "Answer: " + str(round(math.tan(math.radians(x)), 10))
 
-        if match:
-            nums = re.findall(
-                r"-?\d+(?:\.\d+)?",
-                match.group(1)
-            )
+                if "log" in t:
+                    return "Answer: " + str(round(math.log10(x), 10))
 
-            if nums:
-                values = [float(x) for x in nums]
-                return str(round(sum(values) / len(values), 6))
+                if "ln" in t:
+                    return "Answer: " + str(round(math.log(x), 10))
 
-        match = re.search(
-            r"sin\s*\(?\s*(-?\d+(?:\.\d+)?)",
-            t
-        )
+                if "factorial" in t:
+                    return "Answer: " + str(math.factorial(int(x)))
 
-        if match:
-            return str(
-                round(
-                    math.sin(math.radians(float(match.group(1)))),
-                    8
-                )
-            )
-
-        match = re.search(
-            r"cos\s*\(?\s*(-?\d+(?:\.\d+)?)",
-            t
-        )
-
-        if match:
-            return str(
-                round(
-                    math.cos(math.radians(float(match.group(1)))),
-                    8
-                )
-            )
-
-        match = re.search(
-            r"tan\s*\(?\s*(-?\d+(?:\.\d+)?)",
-            t
-        )
-
-        if match:
-            return str(
-                round(
-                    math.tan(math.radians(float(match.group(1)))),
-                    8
-                )
-            )
+        except Exception:
+            return "I could not calculate that."
 
         return None
 
@@ -581,123 +450,84 @@ class GeometryEngine:
     def solve(text):
         t = text.lower()
 
-        nums = re.findall(
-            r"-?\d+(?:\.\d+)?",
-            t
-        )
+        nums = re.findall(r"-?\d+(?:\.\d+)?", t)
 
-        if not nums:
+        try:
+            if "area of circle" in t and nums:
+                r = float(nums[0])
+                return "Area = " + str(round(math.pi * r * r, 4))
+
+            if "circumference" in t and nums:
+                r = float(nums[0])
+                return "Circumference = " + str(round(2 * math.pi * r, 4))
+
+            if "area of rectangle" in t and len(nums) >= 2:
+                l = float(nums[0])
+                w = float(nums[1])
+                return "Area = " + str(l * w)
+
+            if "area of triangle" in t and len(nums) >= 2:
+                b = float(nums[0])
+                h = float(nums[1])
+                return "Area = " + str(0.5 * b * h)
+
+            if "pythagoras" in t and len(nums) >= 2:
+                a = float(nums[0])
+                b = float(nums[1])
+                c = math.sqrt(a * a + b * b)
+                return "Hypotenuse = " + str(round(c, 6))
+
+        except Exception:
             return None
-
-        n = [float(x) for x in nums]
-
-        if "circle" in t and "area" in t:
-            r = n[0]
-            return f"{round(math.pi * r * r, 6)} square units"
-
-        if "circle" in t and (
-            "circumference" in t or "perimeter" in t
-        ):
-            r = n[0]
-            return f"{round(2 * math.pi * r, 6)} units"
-
-        if "square" in t and "area" in t:
-            return f"{round(n[0] * n[0], 6)} square units"
-
-        if "square" in t and "perimeter" in t:
-            return f"{round(4 * n[0], 6)} units"
-
-        if "rectangle" in t and "area" in t and len(n) >= 2:
-            return f"{round(n[0] * n[1], 6)} square units"
-
-        if "rectangle" in t and "perimeter" in t and len(n) >= 2:
-            return f"{round(2 * (n[0] + n[1]), 6)} units"
-
-        if "triangle" in t and "area" in t and len(n) >= 2:
-            return f"{round(0.5 * n[0] * n[1], 6)} square units"
-
-        if "pythagoras" in t and len(n) >= 2:
-            return f"{round(math.sqrt(n[0] ** 2 + n[1] ** 2), 6)}"
-
-        if "cube" in t and "volume" in t:
-            return f"{round(n[0] ** 3, 6)} cubic units"
-
-        if "cuboid" in t and "volume" in t and len(n) >= 3:
-            return f"{round(n[0] * n[1] * n[2], 6)} cubic units"
 
         return None
 
 
 # ============================================================
-# UNIT ENGINE
+# UNIT CONVERTER
 # ============================================================
 
 class UnitEngine:
 
-    @staticmethod
-    def solve(text):
-        t = text.lower()
+    FACTORS = {
+        ("km", "m"): 1000,
+        ("m", "km"): 0.001,
+        ("m", "cm"): 100,
+        ("cm", "m"): 0.01,
+        ("kg", "g"): 1000,
+        ("g", "kg"): 0.001,
+        ("hour", "minute"): 60,
+        ("minute", "second"): 60,
+        ("second", "minute"): 1 / 60,
+        ("minute", "hour"): 1 / 60,
+        ("l", "ml"): 1000,
+        ("ml", "l"): 0.001,
+    }
 
-        match = re.search(
-            r"(-?\d+(?:\.\d+)?)\s*(km|m|cm|mm)\s*(?:to|in)\s*(km|m|cm|mm)",
-            t
-        )
+    @classmethod
+    def solve(cls, text):
+        t = text.lower().replace("to", " ")
 
-        if match:
-            value = float(match.group(1))
-            a = match.group(2)
-            b = match.group(3)
+        pattern = r"(-?\d+(?:\.\d+)?)\s*([a-z]+)\s+([a-z]+)"
 
-            meters = {
-                "km": 1000,
-                "m": 1,
-                "cm": 0.01,
-                "mm": 0.001
-            }
+        match = re.search(pattern, t)
 
-            result = value * meters[a] / meters[b]
+        if not match:
+            return None
 
-            return str(round(result, 8)) + " " + b
+        value = float(match.group(1))
+        source = match.group(2)
+        target = match.group(3)
 
-        match = re.search(
-            r"(-?\d+(?:\.\d+)?)\s*(kg|g|mg)\s*(?:to|in)\s*(kg|g|mg)",
-            t
-        )
+        key = (source, target)
 
-        if match:
-            value = float(match.group(1))
-            a = match.group(2)
-            b = match.group(3)
+        if key in cls.FACTORS:
+            result = value * cls.FACTORS[key]
 
-            grams = {
-                "kg": 1000,
-                "g": 1,
-                "mg": 0.001
-            }
+            if result.is_integer():
+                result = int(result)
 
-            result = value * grams[a] / grams[b]
-
-            return str(round(result, 8)) + " " + b
-
-        match = re.search(
-            r"(-?\d+(?:\.\d+)?)\s*(c|celsius)\s*(?:to|in)\s*(f|fahrenheit)",
-            t
-        )
-
-        if match:
-            c = float(match.group(1))
-            f = c * 9 / 5 + 32
-            return str(round(f, 4)) + " °F"
-
-        match = re.search(
-            r"(-?\d+(?:\.\d+)?)\s*(f|fahrenheit)\s*(?:to|in)\s*(c|celsius)",
-            t
-        )
-
-        if match:
-            f = float(match.group(1))
-            c = (f - 32) * 5 / 9
-            return str(round(c, 4)) + " °C"
+            return str(value) + " " + source + " = " + str(result) + " " + target
 
         return None
 
@@ -711,42 +541,38 @@ class PhysicsEngine:
     @staticmethod
     def solve(text):
         t = text.lower()
+        nums = re.findall(r"-?\d+(?:\.\d+)?", t)
 
-        nums = [
-            float(x)
-            for x in re.findall(
-                r"-?\d+(?:\.\d+)?",
-                t
-            )
-        ]
+        try:
+            if "speed" in t and len(nums) >= 2:
+                distance = float(nums[0])
+                time = float(nums[1])
 
-        if "ohm" in t and len(nums) >= 2:
-            voltage = nums[0]
-            resistance = nums[1]
+                if time == 0:
+                    return "Time cannot be zero."
 
-            if resistance != 0:
-                return f"Current = {round(voltage / resistance, 6)} A"
+                return "Speed = " + str(distance / time)
 
-        if "force" in t and "mass" in t and "acceleration" in t:
-            if len(nums) >= 2:
-                return f"Force = {round(nums[0] * nums[1], 6)} N"
+            if "force" in t and len(nums) >= 2:
+                mass = float(nums[0])
+                acceleration = float(nums[1])
+                return "Force = " + str(mass * acceleration) + " N"
 
-        if "kinetic energy" in t and len(nums) >= 2:
-            m = nums[0]
-            v = nums[1]
-            return f"KE = {round(0.5 * m * v * v, 6)} J"
+            if "kinetic energy" in t and len(nums) >= 2:
+                mass = float(nums[0])
+                velocity = float(nums[1])
+                energy = 0.5 * mass * velocity ** 2
+                return "Kinetic Energy = " + str(energy) + " J"
 
-        if "potential energy" in t and len(nums) >= 2:
-            m = nums[0]
-            h = nums[1]
-            return f"PE ≈ {round(m * 9.8 * h, 6)} J"
+            if "potential energy" in t and len(nums) >= 3:
+                mass = float(nums[0])
+                gravity = float(nums[1])
+                height = float(nums[2])
+                energy = mass * gravity * height
+                return "Potential Energy = " + str(energy) + " J"
 
-        if "momentum" in t and len(nums) >= 2:
-            return f"Momentum = {round(nums[0] * nums[1], 6)} kg·m/s"
-
-        if "speed" in t and "distance" in t and "time" in t:
-            if len(nums) >= 2 and nums[1] != 0:
-                return f"Speed = {round(nums[0] / nums[1], 6)}"
+        except Exception:
+            return None
 
         return None
 
@@ -757,41 +583,30 @@ class PhysicsEngine:
 
 class ChemistryEngine:
 
-    DATA = {
-        "water": "H₂O",
-        "carbon dioxide": "CO₂",
-        "oxygen": "O₂",
-        "hydrogen": "H₂",
-        "nitrogen": "N₂",
-        "sodium chloride": "NaCl",
-        "salt": "NaCl",
-        "ammonia": "NH₃",
-        "methane": "CH₄",
-    }
-
-    @classmethod
-    def solve(cls, text):
+    @staticmethod
+    def solve(text):
         t = text.lower()
 
-        for name, formula in cls.DATA.items():
-            if name in t and (
-                "formula" in t or
-                "chemical" in t or
-                "symbol" in t
-            ):
-                return f"{name.title()} = {formula}"
+        answers = {
+            "h2o": "H2O is water.",
+            "co2": "CO2 is carbon dioxide.",
+            "nacl": "NaCl is sodium chloride, commonly called table salt.",
+            "o2": "O2 is oxygen gas.",
+            "h2": "H2 is hydrogen gas.",
+        }
 
-        match = re.search(
-            r"moles?\s*=\s*([\d.]+)\s*(?:mass)?\s*=?\s*([\d.]+)",
-            t
-        )
+        for key, value in answers.items():
+            if key in t:
+                return value
 
-        if match:
-            mass = float(match.group(1))
-            molar = float(match.group(2))
+        if "atomic number of hydrogen" in t:
+            return "Hydrogen has atomic number 1."
 
-            if molar != 0:
-                return f"Moles = {round(mass / molar, 6)}"
+        if "atomic number of carbon" in t:
+            return "Carbon has atomic number 6."
+
+        if "atomic number of oxygen" in t:
+            return "Oxygen has atomic number 8."
 
         return None
 
@@ -823,14 +638,6 @@ class PeriodicTableEngine:
         "ar": ("Argon", 18),
         "k": ("Potassium", 19),
         "ca": ("Calcium", 20),
-        "fe": ("Iron", 26),
-        "cu": ("Copper", 29),
-        "zn": ("Zinc", 30),
-        "ag": ("Silver", 47),
-        "au": ("Gold", 79),
-        "hg": ("Mercury", 80),
-        "pb": ("Lead", 82),
-        "u": ("Uranium", 92),
     }
 
     @classmethod
@@ -838,16 +645,25 @@ class PeriodicTableEngine:
         t = text.lower()
 
         match = re.search(
-            r"(?:element|symbol)\s+([a-z]{1,2})\b",
+            r"(?:element|symbol)\s+([a-z]{1,2})",
             t
         )
 
-        if match:
-            symbol = match.group(1)
+        if not match:
+            return None
 
-            if symbol in cls.ELEMENTS:
-                name, number = cls.ELEMENTS[symbol]
-                return f"{name} ({symbol.title()}), atomic number {number}"
+        symbol = match.group(1)
+
+        if symbol in cls.ELEMENTS:
+            name, number = cls.ELEMENTS[symbol]
+            return (
+                name
+                + " ("
+                + symbol.title()
+                + "), atomic number "
+                + str(number)
+                + "."
+            )
 
         return None
 
@@ -858,32 +674,24 @@ class PeriodicTableEngine:
 
 class BiologyEngine:
 
-    FACTS = {
-        "photosynthesis":
-            "Photosynthesis is the process by which green plants use light energy to make food from carbon dioxide and water.",
-        "mitochondria":
-            "Mitochondria are organelles involved in producing usable cellular energy.",
-        "nucleus":
-            "The nucleus contains most of a cell's genetic material and helps control cell activities.",
-        "dna":
-            "DNA stores genetic information used by living organisms.",
-        "chlorophyll":
-            "Chlorophyll is the green pigment that absorbs light for photosynthesis.",
-        "heart":
-            "The heart is a muscular organ that pumps blood through the body.",
-        "lungs":
-            "The lungs are organs responsible for gas exchange, taking in oxygen and removing carbon dioxide.",
-        "kidney":
-            "The kidneys filter blood and help regulate water and dissolved substances in the body.",
-        "cell":
-            "A cell is the basic structural and functional unit of living organisms.",
-    }
+    @staticmethod
+    def solve(text):
+        t = text.lower()
 
-    @classmethod
-    def solve(cls, text):
-        t = TextNormalizer.normalize(text)
+        answers = {
+            "photosynthesis":
+                "Photosynthesis is the process by which green plants use light energy to make food from carbon dioxide and water.",
+            "cell":
+                "A cell is the basic structural and functional unit of life.",
+            "dna":
+                "DNA carries genetic information in living organisms.",
+            "heart":
+                "The heart pumps blood throughout the body.",
+            "mitochondria":
+                "Mitochondria are organelles involved in cellular energy production.",
+        }
 
-        for key, value in cls.FACTS.items():
+        for key, value in answers.items():
             if key in t:
                 return value
 
@@ -896,69 +704,28 @@ class BiologyEngine:
 
 class GeneralKnowledgeEngine:
 
-    FACTS = {
-        "earth":
-            "Earth is the third planet from the Sun.",
-        "sun":
-            "The Sun is a star at the center of our solar system.",
-        "moon":
-            "The Moon is Earth's natural satellite.",
-        "solar system":
-            "Our solar system contains the Sun and the objects that orbit it, including planets, dwarf planets, moons, asteroids and comets.",
-        "mercury":
-            "Mercury is the closest planet to the Sun.",
-        "venus":
-            "Venus is the second planet from the Sun.",
-        "mars":
-            "Mars is the fourth planet from the Sun.",
-        "jupiter":
-            "Jupiter is the largest planet in our solar system.",
-        "saturn":
-            "Saturn is well known for its prominent ring system.",
-        "uranus":
-            "Uranus is a planet with a strongly tilted axis.",
-        "neptune":
-            "Neptune is the eighth planet from the Sun.",
-        "india":
-            "India is a country in South Asia.",
+    ANSWERS = {
         "capital of india":
             "The capital of India is New Delhi.",
-        "continent":
-            "Earth has seven commonly recognized continents: Africa, Antarctica, Asia, Europe, North America, Australia/Oceania and South America.",
-        "oceans":
-            "The five commonly recognized oceans are Pacific, Atlantic, Indian, Southern and Arctic.",
-        "computer":
-            "A computer is an electronic system that processes data according to instructions.",
-        "cpu":
-            "CPU stands for Central Processing Unit. It executes instructions and performs calculations.",
-        "ram":
-            "RAM is temporary working memory used by a computer while programs are running.",
-        "internet":
-            "The Internet is a global network of interconnected computer networks.",
-        "html":
-            "HTML is the standard markup language used to structure web pages.",
-        "css":
-            "CSS is used to describe the presentation and styling of web documents.",
-        "python":
-            "Python is a general-purpose programming language known for readable syntax and a large ecosystem.",
-        "javascript":
-            "JavaScript is a programming language widely used for interactive web applications and also for server-side and other software.",
-        "gravity":
-            "Gravity is the interaction that causes masses to attract one another.",
-        "atom":
-            "An atom is the basic unit of a chemical element.",
-        "molecule":
-            "A molecule consists of two or more atoms held together by chemical bonds.",
-        "democracy":
-            "Democracy is a system of government in which political power is exercised by the people, directly or through representatives.",
+        "capital of maharashtra":
+            "The capital of Maharashtra is Mumbai.",
+        "largest planet":
+            "Jupiter is the largest planet in our Solar System.",
+        "red planet":
+            "Mars is commonly called the Red Planet.",
+        "fastest land animal":
+            "The cheetah is the fastest land animal.",
+        "national animal of india":
+            "The Bengal tiger is India's national animal.",
+        "national bird of india":
+            "The Indian peafowl is India's national bird.",
     }
 
     @classmethod
     def solve(cls, text):
-        t = TextNormalizer.normalize(text)
+        t = text.lower()
 
-        # More specific questions first
-        for key, answer in cls.FACTS.items():
+        for key, answer in cls.ANSWERS.items():
             if key in t:
                 return answer
 
@@ -971,26 +738,28 @@ class GeneralKnowledgeEngine:
 
 class StudyEngine:
 
-    FACTS = {
-        "newton first law":
-            "Newton's first law says that an object remains at rest or in uniform motion unless acted on by a net external force.",
-        "ecosystem":
-            "An ecosystem includes living organisms and the non-living environment interacting together.",
-        "gravity":
-            "Gravity is the attraction between masses.",
-        "atom":
-            "An atom is the basic unit of a chemical element.",
-        "photosynthesis":
-            "Plants use light energy to make food from carbon dioxide and water during photosynthesis.",
-    }
+    @staticmethod
+    def solve(text):
+        t = text.lower()
 
-    @classmethod
-    def solve(cls, text):
-        t = TextNormalizer.normalize(text)
+        if "study plan" in t:
+            return (
+                "Simple study plan:\n"
+                "1. Choose one topic.\n"
+                "2. Study for 25 minutes.\n"
+                "3. Take a 5 minute break.\n"
+                "4. Solve practice questions.\n"
+                "5. Review mistakes."
+            )
 
-        for key, value in cls.FACTS.items():
-            if key in t:
-                return value
+        if "how to study" in t:
+            return (
+                "Start with the concept, make short notes, "
+                "practice questions, and revise using active recall."
+            )
+
+        if "photosynthesis" in t:
+            return BiologyEngine.solve(t)
 
         return None
 
@@ -1003,24 +772,15 @@ class HomeworkEngine:
 
     @staticmethod
     def solve(text):
-        t = TextNormalizer.normalize(text)
+        t = text.lower()
 
-        triggers = [
-            "homework",
-            "solve this",
-            "answer this",
-            "question solve",
-        ]
+        if "homework" in t:
+            return (
+                "Send the homework question here. "
+                "I can explain the solution step by step."
+            )
 
-        if not any(x in t for x in triggers):
-            return None
-
-        result = MathEngine.calculate(text)
-
-        if result:
-            return f"Answer: {result}"
-
-        return "Question bhejo, main usse solve karne ki koshish karungi."
+        return None
 
 
 # ============================================================
@@ -1029,335 +789,316 @@ class HomeworkEngine:
 
 class QuizEngine:
 
-    QUESTIONS = [
-        (
-            "What is 5 + 7?",
-            ["10", "11", "12", "13"],
-            "12"
-        ),
-        (
-            "Which planet is known as the Red Planet?",
-            ["Earth", "Mars", "Venus", "Jupiter"],
-            "Mars"
-        ),
-        (
-            "What is the chemical formula of water?",
-            ["CO2", "H2O", "O2", "NaCl"],
-            "H2O"
-        ),
-        (
-            "Which organelle is associated with cellular energy production?",
-            ["Nucleus", "Mitochondria", "Ribosome", "Cell wall"],
-            "Mitochondria"
-        ),
-    ]
-
-    @classmethod
-    def solve(cls, text):
-        t = TextNormalizer.normalize(text)
+    @staticmethod
+    def solve(text):
+        t = text.lower()
 
         if "quiz" not in t:
             return None
 
-        q, options, answer = random.choice(cls.QUESTIONS)
+        questions = [
+            "Quiz: What is the capital of India?",
+            "Quiz: Which planet is known as the Red Planet?",
+            "Quiz: What is H2O commonly called?",
+            "Quiz: Which gas do humans need for respiration?",
+        ]
 
-        return (
-            f"🧠 Quiz:\n{q}\n\n"
-            f"A) {options[0]}\n"
-            f"B) {options[1]}\n"
-            f"C) {options[2]}\n"
-            f"D) {options[3]}"
-        )
+        return random.choice(questions)
 
 
 # ============================================================
-# FLASHCARDS
+# FLASHCARD
 # ============================================================
 
 class FlashcardEngine:
 
-    CARDS = [
-        ("Photosynthesis", "Plants use light to make food."),
-        ("CPU", "Central Processing Unit."),
-        ("DNA", "Stores genetic information."),
-        ("Gravity", "Attraction between masses."),
-        ("HTML", "Markup language for structuring web pages."),
-        ("Python", "General-purpose programming language."),
-    ]
-
-    @classmethod
-    def solve(cls, text):
-        t = TextNormalizer.normalize(text)
+    @staticmethod
+    def solve(text):
+        t = text.lower()
 
         if "flashcard" not in t:
             return None
 
-        front, back = random.choice(cls.CARDS)
-
-        return f"📚 {front}\n\n{back}"
-
-
-# ============================================================
-# CODING ENGINE
-# ============================================================
-
-class CodingEngine:
-
-    @staticmethod
-    def solve(text):
-        t = TextNormalizer.normalize(text)
-
-        coding_words = [
-            "python",
-            "java",
-            "javascript",
-            "c++",
-            "c programming",
-            "c#",
-            "kotlin",
-            "swift",
-            "php",
-            "ruby",
-            "rust",
-            "go language",
-            "sql",
-            "html",
-            "css",
-            "coding",
-            "programming",
-            "code",
+        cards = [
+            "Flashcard - Photosynthesis: Food-making process in green plants.",
+            "Flashcard - DNA: Molecule carrying genetic information.",
+            "Flashcard - Force: Mass multiplied by acceleration.",
+            "Flashcard - H2O: Water.",
         ]
 
-        if not any(x in t for x in coding_words):
-            return None
-
-        if "python" in t and "calculator" in t:
-            return (
-                "Python calculator example:\n\n"
-                "a = float(input('First: '))\n"
-                "b = float(input('Second: '))\n"
-                "print(a + b)"
-            )
-
-        if "python" in t and "loop" in t:
-            return (
-                "Python loop example:\n\n"
-                "for i in range(5):\n"
-                "    print(i)"
-            )
-
-        if "html" in t and "page" in t:
-            return (
-                "<!DOCTYPE html>\n"
-                "<html>\n"
-                "<body>\n"
-                "  <h1>Hello</h1>\n"
-                "</body>\n"
-                "</html>"
-            )
-
-        if "javascript" in t and "hello" in t:
-            return "console.log('Hello World');"
-
-        if "what is python" in t:
-            return (
-                "Python is a general-purpose programming language "
-                "used for automation, web development, data work, AI and more."
-            )
-
-        if "what is html" in t:
-            return "HTML is used to structure content on web pages."
-
-        if "what is css" in t:
-            return "CSS controls the styling and visual presentation of web pages."
-
-        return (
-            "💻 Coding mode: main programming concepts, code examples, "
-            "debugging and explanations mein help kar sakti hoon."
-        )
+        return random.choice(cards)
 
 
 # ============================================================
-# CREATIVE ENGINE
-# ============================================================
-
-class CreativeEngine:
-
-    @staticmethod
-    def solve(text):
-        t = TextNormalizer.normalize(text)
-
-        if not any(x in t for x in [
-            "write a story",
-            "make a story",
-            "story",
-            "creative",
-            "script",
-            "caption",
-            "video idea",
-            "content idea",
-        ]):
-            return None
-
-        if "story" in t:
-            return (
-                "✨ Creative story idea:\n\n"
-                "Ek ordinary student ko ek mysterious AI assistant "
-                "milti hai jo sirf answers nahi deti, balki usse "
-                "problems ko khud solve karna sikhati hai..."
-            )
-
-        if "script" in t:
-            return (
-                "🎬 Script structure:\n"
-                "1. Hook\n"
-                "2. Main idea\n"
-                "3. Interesting moment\n"
-                "4. Conclusion\n"
-                "5. Call to action"
-            )
-
-        if "caption" in t:
-            return "✨ Caption idea: Dream big. Build daily. Keep improving."
-
-        return "🎨 Main story, script, caption aur content ideas create kar sakti hoon."
-
-# ============================================================
-# GAMING ENGINE
-# ============================================================
-
-class GamingEngine:
-
-    @staticmethod
-    def solve(text):
-        t = TextNormalizer.normalize(text)
-
-        if "free fire" in t:
-            return (
-                "🎮 Free Fire related questions, gaming ideas, "
-                "tournament concepts aur basic game information mein help kar sakti hoon."
-            )
-
-        if "gaming" in t or "game" in t:
-            return "🎮 Gaming mode active. Game ka naam aur question batao."
-
-        return None
-
-
-# ============================================================
-# LANGUAGE ENGINE
+# LANGUAGE
 # ============================================================
 
 class LanguageEngine:
 
-    DICT = {
-        "hello": "नमस्ते",
-        "water": "पानी",
-        "food": "भोजन",
-        "friend": "दोस्त",
-        "school": "स्कूल",
-        "book": "किताब",
-        "computer": "कंप्यूटर",
-        "game": "खेल",
-        "love": "प्यार",
-        "sun": "सूरज",
-        "moon": "चाँद",
-        "earth": "पृथ्वी",
-    }
+    @staticmethod
+    def solve(text):
+        t = text.lower()
 
-    @classmethod
-    def solve(cls, text):
-        t = TextNormalizer.normalize(text)
+        if t.startswith("translate "):
+            phrase = text[10:].strip()
 
-        match = re.search(
-            r"(?:translate|meaning of)\s+([a-z]+)",
-            t
-        )
+            return (
+                "Translation mode: "
+                + phrase
+                + "\n"
+                "For high-quality translation, provide the target language too."
+            )
 
-        if match:
-            word = match.group(1)
-
-            if word in cls.DICT:
-                return f"{word} = {cls.DICT[word]}"
+        if "meaning of" in t:
+            return (
+                "Send the word and I can explain its meaning "
+                "in simple language."
+            )
 
         return None
 
 
 # ============================================================
-# REASONING ENGINE
+# REASONING
 # ============================================================
 
 class ReasoningEngine:
 
     @staticmethod
     def solve(text):
-        t = TextNormalizer.normalize(text)
+        t = text.lower()
 
-        if "odd one out" in t:
+        if "why is sky blue" in t:
             return (
-                "Odd-one-out question ke options bhejo, "
-                "main reasoning ke saath answer karungi."
+                "The sky appears blue mainly because Earth's atmosphere "
+                "scatters shorter blue wavelengths of sunlight more strongly."
             )
 
-        match = re.search(
-            r"(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)",
-            t
-        )
-
-        if match and "pattern" in t:
-            nums = [
-                int(match.group(i))
-                for i in range(1, 5)
-            ]
-
-            d1 = nums[1] - nums[0]
-            d2 = nums[2] - nums[1]
-            d3 = nums[3] - nums[2]
-
-            if d1 == d2 == d3:
-                return f"Pattern is +{d1}. Next number = {nums[-1] + d1}"
+        if "riddle" in t:
+            return "Send me the riddle and I will try to solve it."
 
         return None
 
 
 # ============================================================
-# VISION / MEDIA ENGINE
+# CODING
+# ============================================================
+
+class CodingEngine:
+
+    LANGUAGES = [
+        "python",
+        "java",
+        "javascript",
+        "typescript",
+        "c",
+        "c++",
+        "c#",
+        "kotlin",
+        "swift",
+        "go",
+        "rust",
+        "php",
+        "ruby",
+        "dart",
+        "sql",
+        "html",
+        "css",
+        "bash",
+        "json",
+        "xml",
+        "yaml",
+        "r",
+        "lua",
+        "perl"
+    ]
+
+    @classmethod
+    def solve(cls, text):
+        t = text.lower()
+
+        if not any(
+            word in t
+            for word in [
+                "code",
+                "coding",
+                "program",
+                "programming",
+                "debug",
+                "python",
+                "java",
+                "javascript",
+                "kotlin",
+                "html",
+                "css",
+                "sql"
+            ]
+        ):
+            return None
+
+        if "hello world" in t and "python" in t:
+            return "Python example:\n\nprint('Hello World')"
+
+        if "python" in t and "calculator" in t:
+            return (
+                "Python calculator example:\n\n"
+                "a = float(input('First number: '))\n"
+                "b = float(input('Second number: '))\n"
+                "print(a + b)"
+            )
+
+        return (
+            "Coding mode active. "
+            "Tell me the programming language and what you want to build, "
+            "debug, explain, or convert."
+        )
+
+
+# ============================================================
+# CREATIVE
+# ============================================================
+
+class CreativeEngine:
+
+    @staticmethod
+    def solve(text):
+        t = text.lower()
+
+        if "story" in t:
+            return (
+                "Creative story idea:\n"
+                "A young creator discovers an offline AI assistant "
+                "that learns from everyday conversations and helps "
+                "turn small ideas into real projects."
+            )
+
+        if "caption" in t:
+            return (
+                "Caption idea:\n"
+                "Dream big. Build quietly. Let the results speak."
+            )
+
+        if "script" in t:
+            return (
+                "Script structure:\n"
+                "Hook -> Problem -> Journey -> Result -> Call to action."
+            )
+
+        if "idea" in t:
+            return (
+                "Content idea: Show the journey of building Layla "
+                "from a simple Python project into an Android AI app."
+            )
+
+        return None
+
+
+# ============================================================
+# GAMING
+# ============================================================
+
+class GamingEngine:
+
+    @staticmethod
+    def solve(text):
+        t = text.lower()
+
+        if "free fire" in t:
+            return (
+                "For Free Fire content, I can help with tournament ideas, "
+                "captions, practice plans, video concepts and scripts."
+            )
+
+        if "gaming" in t or "game" in t:
+            return (
+                "Gaming mode active. Tell me the game or the type "
+                "of gaming content you want."
+            )
+
+        return None
+
+
+# ============================================================
+# VISION / MEDIA
 # ============================================================
 
 class VisionMediaEngine:
 
     @staticmethod
     def solve(text):
-        t = TextNormalizer.normalize(text)
+        t = text.lower()
 
-        if any(x in t for x in [
-            "photo",
-            "image",
-            "picture",
-            "video",
-            "camera",
-        ]):
+        if any(
+            word in t
+            for word in [
+                "photo",
+                "image",
+                "video",
+                "file",
+                "picture"
+            ]
+        ):
             return (
-                "👁️ Vision module ready hai. Photo/video understanding "
-                "ke liye actual local vision/OCR model connect karna hoga. "
-                "Is architecture mein us module ko baad mein add kiya ja sakta hai."
+                "Media mode is ready. Use the Attach button to select "
+                "a Photo, Video, or File."
             )
 
         return None
 
 
 # ============================================================
-# BUBBLE
+# ATTACHMENT POPUP
+# ============================================================
+
+class AttachmentPopup(Popup):
+
+    def __init__(self, callback, **kwargs):
+        super().__init__(
+            title="Attach",
+            size_hint=(0.8, None),
+            height=dp(250),
+            auto_dismiss=True,
+            **kwargs
+        )
+
+        self.callback = callback
+
+        layout = BoxLayout(
+            orientation="vertical",
+            spacing=dp(10),
+            padding=dp(15)
+        )
+
+        photo = Button(text="Photo")
+        video = Button(text="Video")
+        file_button = Button(text="File")
+
+        photo.bind(on_release=lambda x: self.select("photo"))
+        video.bind(on_release=lambda x: self.select("video"))
+        file_button.bind(on_release=lambda x: self.select("file"))
+
+        layout.add_widget(photo)
+        layout.add_widget(video)
+        layout.add_widget(file_button)
+
+        self.content = layout
+
+    def select(self, kind):
+        self.dismiss()
+        self.callback(kind)
+
+
+# ============================================================
+# CHAT BUBBLE
 # ============================================================
 
 class Bubble(BoxLayout):
 
     def __init__(self, text, user=False, **kwargs):
         super().__init__(
-            orientation="horizontal",
+            orientation="vertical",
             size_hint_y=None,
-            padding=(dp(12), dp(8)),
-            spacing=dp(8),
+            padding=[dp(12), dp(9)],
             **kwargs
         )
 
@@ -1365,29 +1106,35 @@ class Bubble(BoxLayout):
 
         label = Label(
             text=text,
-            markup=True,
+            color=(1, 1, 1, 1),
+            font_size=dp(15),
             halign="left",
             valign="middle",
-            size_hint_y=None,
-            text_size=(dp(285), None),
+            size_hint_y=None
         )
 
-        label.texture_update()
+        label.bind(
+            texture_size=lambda instance, value:
+            setattr(instance, "height", value[1])
+        )
 
-        label.height = max(
-            dp(40),
+        label.bind(
+            width=lambda instance, value:
+            setattr(instance, "text_size", (value, None))
+        )
+
+        self.add_widget(label)
+
+        self.height = max(
+            dp(42),
             label.texture_size[1] + dp(18)
         )
 
-        self.height = label.height + dp(16)
-
         with self.canvas.before:
-            Color(
-                0.10 if user else 0.16,
-                0.10 if user else 0.16,
-                0.10 if user else 0.16,
-                1
-            )
+            if user:
+                Color(0.12, 0.35, 0.65, 1)
+            else:
+                Color(0.15, 0.15, 0.18, 1)
 
             self.rect = RoundedRectangle(
                 pos=self.pos,
@@ -1396,93 +1143,69 @@ class Bubble(BoxLayout):
             )
 
         self.bind(
-            pos=self._update_rect,
-            size=self._update_rect
+            pos=self.update_rect,
+            size=self.update_rect
         )
 
-        self.add_widget(label)
-
-    def _update_rect(self, *args):
+    def update_rect(self, *args):
         self.rect.pos = self.pos
         self.rect.size = self.size
 
 
 # ============================================================
-# MAIN APP
+# LAYLA APP
 # ============================================================
 
-class Layla(App):
+class Layla(BoxLayout):
 
-    def build(self):
-        Window.clearcolor = (0.035, 0.035, 0.035, 1)
+    def __init__(self, **kwargs):
+        super().__init__(
+            orientation="vertical",
+            **kwargs
+        )
 
         self.brain = OfflineBrain()
 
-        self.conversation = ConversationEngine()
-        self.math_engine = MathEngine()
-        self.advanced_math = AdvancedMathEngine()
-        self.geometry = GeometryEngine()
-        self.physics = PhysicsEngine()
-        self.chemistry = ChemistryEngine()
-        self.periodic = PeriodicTableEngine()
-        self.biology = BiologyEngine()
-        self.general = GeneralKnowledgeEngine()
-        self.study = StudyEngine()
-        self.homework = HomeworkEngine()
-        self.quiz = QuizEngine()
-        self.flashcards = FlashcardEngine()
-        self.coding = CodingEngine()
-        self.creative = CreativeEngine()
-        self.gaming = GamingEngine()
-        self.language = LanguageEngine()
-        self.reasoning = ReasoningEngine()
-        self.vision = VisionMediaEngine()
-
-        root = BoxLayout(
-            orientation="vertical",
-            padding=dp(8),
-            spacing=dp(8)
-        )
+        Window.clearcolor = (0.04, 0.04, 0.05, 1)
 
         # ---------------- HEADER ----------------
 
         header = BoxLayout(
             size_hint_y=None,
             height=dp(55),
-            padding=(dp(8), dp(4))
+            padding=[dp(15), dp(8)]
         )
 
         title = Label(
-            text="[b]LAYLA[/b]",
-            markup=True,
+            text="Layla",
             font_size=dp(22),
-            halign="left",
-            valign="middle"
+            bold=True,
+            color=(1, 1, 1, 1)
         )
 
-        subtitle = Label(
+        status = Label(
             text="Personal AI",
             font_size=dp(12),
-            halign="right",
-            valign="middle"
+            color=(0.65, 0.65, 0.68, 1)
         )
 
         header.add_widget(title)
-        header.add_widget(subtitle)
+        header.add_widget(status)
 
-        root.add_widget(header)
+        self.add_widget(header)
 
         # ---------------- CHAT ----------------
 
         self.scroll = ScrollView(
-            do_scroll_x=False
+            do_scroll_x=False,
+            bar_width=dp(3)
         )
 
         self.chat = BoxLayout(
             orientation="vertical",
             spacing=dp(8),
-            size_hint_y=None,
-            padding=(dp(4), dp(4))
+            padding=[dp(10), dp(10)],
+            size_hint_y=None
         )
 
         self.chat.bind(
@@ -1490,354 +1213,390 @@ class Layla(App):
         )
 
         self.scroll.add_widget(self.chat)
-        root.add_widget(self.scroll)
+        self.add_widget(self.scroll)
 
         # ---------------- INPUT ----------------
 
         bottom = BoxLayout(
             size_hint_y=None,
-            height=dp(55),
-            spacing=dp(6)
+            height=dp(60),
+            spacing=dp(5),
+            padding=[dp(6), dp(6)]
         )
 
-        self.input = TextInput(
+        attach = Button(
+            text="Attach",
+            size_hint_x=None,
+            width=dp(75)
+        )
+
+        self.input_box = TextInput(
             hint_text="Talk to Layla...",
             multiline=False,
-            size_hint_x=0.78,
-            padding=(dp(12), dp(10)),
-            font_size=dp(16)
+            font_size=dp(16),
+            foreground_color=(1, 1, 1, 1),
+            background_color=(0.12, 0.12, 0.14, 1),
+            cursor_color=(1, 1, 1, 1),
+            padding=[dp(10), dp(12)]
         )
 
-        self.input.bind(
-            on_text_validate=self.send_message
+        mic = Button(
+            text="Mic",
+            size_hint_x=None,
+            width=dp(55)
         )
 
         send = Button(
-            text="➤",
-            size_hint_x=0.12,
-            font_size=dp(20)
+            text="Send",
+            size_hint_x=None,
+            width=dp(65)
+        )
+
+        attach.bind(
+            on_release=self.open_attachment_menu
         )
 
         send.bind(
             on_release=self.send_message
         )
 
-        mic = Button(
-            text="🎤",
-            size_hint_x=0.10
+        self.input_box.bind(
+            on_text_validate=self.send_message
         )
 
         mic.bind(
-            on_release=self.start_mic
+            on_release=self.voice_input
         )
 
-        bottom.add_widget(self.input)
-        bottom.add_widget(send)
+        bottom.add_widget(attach)
+        bottom.add_widget(self.input_box)
         bottom.add_widget(mic)
+        bottom.add_widget(send)
 
-        root.add_widget(bottom)
+        self.add_widget(bottom)
 
-        self.add_layla(
-            "Hello! 👋 Main Layla hoon. "
-            "Normal language mein mujhse baat karo."
+        self.add_bot_message(
+            "Hello! Main Layla hoon. Mujhe kuch bhi pucho."
         )
 
-        return root
+    # --------------------------------------------------------
 
-    # ========================================================
-    # CHAT
-    # ========================================================
+    def add_user_message(self, text):
+        bubble = Bubble(text, user=True)
+        self.chat.add_widget(bubble)
 
-    def add_user(self, text):
-        self.chat.add_widget(
-            Bubble(text, user=True)
-        )
         self.scroll_to_bottom()
 
-    def add_layla(self, text):
-        self.chat.add_widget(
-            Bubble(text, user=False)
-        )
+    # --------------------------------------------------------
+
+    def add_bot_message(self, text):
+        bubble = Bubble(text, user=False)
+        self.chat.add_widget(bubble)
+
         self.scroll_to_bottom()
+
+    # --------------------------------------------------------
 
     def scroll_to_bottom(self):
-        self.scroll.scroll_y = 0
+        from kivy.clock import Clock
 
-    # ========================================================
-    # MESSAGE
-    # ========================================================
+        Clock.schedule_once(
+            lambda dt: setattr(
+                self.scroll,
+                "scroll_y",
+                0
+            ),
+            0.1
+        )
 
-    def send_message(self, instance):
-        text = self.input.text.strip()
+    # --------------------------------------------------------
+
+    def send_message(self, *args):
+        text = self.input_box.text.strip()
 
         if not text:
             return
 
-        self.input.text = ""
+        self.input_box.text = ""
 
-        self.add_user(text)
+        self.add_user_message(text)
 
-        answer = self.ai_reply(text)
+        answer = self.process_message(text)
 
-        self.add_layla(answer)
+        self.add_bot_message(answer)
 
-    # ========================================================
-    # AI ROUTER
-    # ========================================================
+    # --------------------------------------------------------
 
-    def ai_reply(self, original):
+    def process_message(self, text):
 
-        # ----------------------------------------------------
-        # Remove old Teach command completely
-        # ----------------------------------------------------
+        # Automatic learning
+        self.brain.learn(text)
 
-        if original.lower().startswith("teach:"):
-            return (
-                "Ab Teach command ki zarurat nahi hai. "
-                "Normal conversation se hi useful information learn karungi."
-            )
+        # Normalize
+        normalized = TextNormalizer.normalize(text)
 
-        # ----------------------------------------------------
-        # Natural learning
-        # ----------------------------------------------------
-
-        learned_now = self.brain.automatic_learning(original)
-
-        if learned_now:
-            return learned_now
-
-        # ----------------------------------------------------
-        # Normalize + spelling correction
-        # ----------------------------------------------------
-
-        normalized = TextNormalizer.normalize(original)
-        corrected = SpellCorrector.correct(normalized)
-
-        text = corrected
-
-        # ----------------------------------------------------
         # Memory
-        # ----------------------------------------------------
-
-        memory_answer = self.brain.find_answer(text)
+        memory_answer = self.brain.answer(normalized)
 
         if memory_answer:
             return memory_answer
 
-        # ----------------------------------------------------
         # Conversation
-        # ----------------------------------------------------
-
-        answer = self.conversation.solve(text)
+        answer = ConversationEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
-        # General Knowledge
-        # ----------------------------------------------------
-
-        answer = self.general.solve(text)
+        # General knowledge
+        answer = GeneralKnowledgeEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Math
-        # ----------------------------------------------------
-
-        answer = self.math_engine.calculate(text)
-
-        if answer is not None:
-            return f"Answer: {answer}"
-
-        answer = self.advanced_math.solve(text)
+        answer = MathEngine.solve(normalized)
 
         if answer:
-            return f"Answer: {answer}"
+            return answer
 
-        # ----------------------------------------------------
+        # Advanced math
+        answer = AdvancedMathEngine.solve(normalized)
+
+        if answer:
+            return answer
+
         # Geometry
-        # ----------------------------------------------------
-
-        answer = self.geometry.solve(text)
+        answer = GeometryEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Units
-        # ----------------------------------------------------
-
-        answer = self.unit_engine_safe(text)
+        answer = UnitEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Physics
-        # ----------------------------------------------------
-
-        answer = self.physics.solve(text)
+        answer = PhysicsEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Chemistry
-        # ----------------------------------------------------
-
-        answer = self.chemistry.solve(text)
+        answer = ChemistryEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Periodic table
-        # ----------------------------------------------------
-
-        answer = self.periodic.solve(text)
+        answer = PeriodicTableEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Biology
-        # ----------------------------------------------------
-
-        answer = self.biology.solve(text)
+        answer = BiologyEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Homework
-        # ----------------------------------------------------
-
-        answer = self.homework.solve(text)
+        answer = HomeworkEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Study
-        # ----------------------------------------------------
-
-        answer = self.study.solve(text)
+        answer = StudyEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Quiz
-        # ----------------------------------------------------
-
-        answer = self.quiz.solve(text)
+        answer = QuizEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Flashcards
-        # ----------------------------------------------------
-
-        answer = self.flashcards.solve(text)
+        answer = FlashcardEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Language
-        # ----------------------------------------------------
-
-        answer = self.language.solve(text)
+        answer = LanguageEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Reasoning
-        # ----------------------------------------------------
-
-        answer = self.reasoning.solve(text)
+        answer = ReasoningEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Coding
-        # ----------------------------------------------------
-
-        answer = self.coding.solve(text)
+        answer = CodingEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Creative
-        # ----------------------------------------------------
-
-        answer = self.creative.solve(text)
+        answer = CreativeEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
         # Gaming
-        # ----------------------------------------------------
-
-        answer = self.gaming.solve(text)
+        answer = GamingEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
-        # Vision / Media
-        # ----------------------------------------------------
-
-        answer = self.vision.solve(text)
+        # Media
+        answer = VisionMediaEngine.solve(normalized)
 
         if answer:
             return answer
 
-        # ----------------------------------------------------
-        # Spelling retry
-        # ----------------------------------------------------
+        # Spell corrected retry
+        corrected = SpellCorrector.correct(normalized)
 
         if corrected != normalized:
 
-            memory_answer = self.brain.find_answer(corrected)
+            answer = ConversationEngine.solve(corrected)
 
-            if memory_answer:
-                return memory_answer
+            if answer:
+                return answer
 
-            general_answer = self.general.solve(corrected)
+            answer = GeneralKnowledgeEngine.solve(corrected)
 
-            if general_answer:
-                return general_answer
+            if answer:
+                return answer
 
-            conversation_answer = self.conversation.solve(corrected)
+            answer = MathEngine.solve(corrected)
 
-            if conversation_answer:
-                return conversation_answer
-
-        # ----------------------------------------------------
-        # Unknown
-        # ----------------------------------------------------
+            if answer:
+                return answer
 
         return (
-            "Mujhe abhi iska exact answer nahi pata. "
-            "Thoda aur detail mein batao, main samajhne ki koshish karungi. 😊"
+            "Main samajhne ki koshish kar rahi hoon. "
+            "Thoda aur detail mein batao ki tum kya chahte ho."
         )
 
-    def unit_engine_safe(self, text):
-        return UnitEngine.solve(text)
+    # --------------------------------------------------------
 
-    # ========================================================
-    # MIC
-    # ========================================================
+    def open_attachment_menu(self, *args):
+        popup = AttachmentPopup(
+            self.choose_attachment
+        )
+        popup.open()
 
-    def start_mic(self, instance):
+    # --------------------------------------------------------
+
+    def choose_attachment(self, kind):
+
+        if filechooser is None:
+            self.add_bot_message(
+                "File picker available nahi hai. "
+                "Build mein plyer dependency check karni hogi."
+            )
+            return
+
+        try:
+            filters = []
+
+            if kind == "photo":
+                filters = [
+                    "*.png",
+                    "*.jpg",
+                    "*.jpeg",
+                    "*.webp"
+                ]
+
+            elif kind == "video":
+                filters = [
+                    "*.mp4",
+                    "*.mkv",
+                    "*.avi",
+                    "*.mov"
+                ]
+
+            selected = filechooser.open_file(
+                multiple=False,
+                filters=filters
+            )
+
+            if selected:
+                self.attachment_selected(
+                    kind,
+                    selected[0]
+                )
+
+        except Exception as e:
+            self.add_bot_message(
+                "Attachment open nahi ho paya: "
+                + str(e)
+            )
+
+    # --------------------------------------------------------
+
+    def attachment_selected(self, kind, path):
+
+        filename = os.path.basename(path)
+
+        if kind == "photo":
+            self.add_user_message(
+                "Photo attached: " + filename
+            )
+
+            self.add_bot_message(
+                "Photo select ho gayi. "
+                "Actual image understanding ke liye "
+                "vision/OCR model connect karna hoga."
+            )
+
+        elif kind == "video":
+            self.add_user_message(
+                "Video attached: " + filename
+            )
+
+            self.add_bot_message(
+                "Video select ho gaya. "
+                "Actual video analysis ke liye "
+                "media/vision model connect karna hoga."
+            )
+
+        else:
+            self.add_user_message(
+                "File attached: " + filename
+            )
+
+            self.add_bot_message(
+                "File select ho gayi. "
+                "File type aur content ke hisaab se "
+                "processing module baad mein connect kiya ja sakta hai."
+            )
+
+    # --------------------------------------------------------
+
+    def voice_input(self, *args):
+
+        try:
+            from plyer import stt
+
+            if hasattr(stt, "start"):
+                stt.start()
+                self.add_bot_message(
+                    "Voice input start karne ki koshish ki gayi."
+                )
+                return
+
+        except Exception:
+            pass
+
         try:
             from jnius import autoclass
 
@@ -1862,25 +1621,28 @@ class Layla(App):
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
 
-            intent.putExtra(
-                RecognizerIntent.EXTRA_PROMPT,
-                "Speak to Layla"
-            )
-
             PythonActivity.mActivity.startActivityForResult(
                 intent,
-                100
+                1001
             )
 
         except Exception:
-            self.add_layla(
-                "🎤 Voice input Android environment mein available nahi hai."
+            self.add_bot_message(
+                "Voice input is build mein available nahi hai. "
+                "Android speech dependency check karni hogi."
             )
 
 
 # ============================================================
-# RUN
+# APP
 # ============================================================
 
+class LaylaApp(App):
+
+    def build(self):
+        self.title = "Layla"
+        return Layla()
+
+
 if __name__ == "__main__":
-    Layla().run()
+    LaylaApp().run()
