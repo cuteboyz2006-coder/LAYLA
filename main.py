@@ -35,6 +35,8 @@ class OfflineBrain:
 
         self.load()
 
+    # -----------------------------------------------------
+
     def load(self):
 
         try:
@@ -47,20 +49,31 @@ class OfflineBrain:
                     encoding="utf-8"
                 ) as f:
 
-                    self.knowledge = json.load(f)
+                    data = json.load(f)
+
+                    if isinstance(data, dict):
+                        self.knowledge = data
+                    else:
+                        self.knowledge = {}
 
         except Exception:
 
             self.knowledge = {}
 
+    # -----------------------------------------------------
+
     def save(self):
 
         try:
 
-            os.makedirs(
-                os.path.dirname(self.file),
-                exist_ok=True
-            )
+            folder = os.path.dirname(self.file)
+
+            if folder:
+
+                os.makedirs(
+                    folder,
+                    exist_ok=True
+                )
 
             with open(
                 self.file,
@@ -79,19 +92,95 @@ class OfflineBrain:
 
             pass
 
+    # -----------------------------------------------------
+
     def teach(self, question, answer):
 
         question = question.strip().lower()
+        answer = answer.strip()
 
-        if not question or not answer.strip():
+        if not question or not answer:
 
             return False
 
-        self.knowledge[question] = answer.strip()
+        self.knowledge[question] = answer
 
         self.save()
 
         return True
+
+    # -----------------------------------------------------
+
+    def teach_conversation(self, conversation):
+
+        """
+        Complete conversation ko question-answer pairs
+        mein convert karta hai.
+
+        Example:
+
+        Person A: Hello
+        Person B: Hi
+
+        Person A: Kaise ho?
+        Person B: Main theek hoon.
+
+        Isse Person A ke messages ke responses save honge.
+        """
+
+        lines = conversation.splitlines()
+
+        pending_question = None
+        learned = 0
+
+        for line in lines:
+
+            line = line.strip()
+
+            if not line:
+                continue
+
+            # Person A / User / A
+            match_a = re.match(
+                r"^(person\s*a|a|user)\s*:\s*(.+)$",
+                line,
+                re.IGNORECASE
+            )
+
+            if match_a:
+
+                pending_question = match_a.group(2).strip()
+
+                continue
+
+            # Person B / Layla / B
+            match_b = re.match(
+                r"^(person\s*b|b|layla|assistant)\s*:\s*(.+)$",
+                line,
+                re.IGNORECASE
+            )
+
+            if match_b and pending_question:
+
+                answer = match_b.group(2).strip()
+
+                if answer:
+
+                    self.knowledge[
+                        pending_question.lower()
+                    ] = answer
+
+                    learned += 1
+
+                    pending_question = None
+
+        if learned > 0:
+
+            self.save()
+
+        return learned
+
+    # -----------------------------------------------------
 
     def normalize(self, text):
 
@@ -110,6 +199,8 @@ class OfflineBrain:
         )
 
         return text.strip()
+
+    # -----------------------------------------------------
 
     def find_answer(self, message):
 
@@ -148,12 +239,17 @@ class OfflineBrain:
 
             score = len(common) / len(q_words)
 
-            if score > best_score and score >= 0.45:
+            if (
+                score > best_score
+                and score >= 0.45
+            ):
 
                 best_score = score
                 best_answer = answer
 
         return best_answer
+
+    # -----------------------------------------------------
 
     def count(self):
 
@@ -198,7 +294,8 @@ class Bubble(BoxLayout):
             bold=True,
             size_hint_y=None,
             height=dp(22),
-            halign="left"
+            halign="left",
+            valign="middle"
         )
 
         message = Label(
@@ -215,16 +312,29 @@ class Bubble(BoxLayout):
             None
         )
 
-        def update_height(instance, value):
+        def update_message_height(
+            instance,
+            value
+        ):
 
-            instance.height = value[1] + dp(8)
+            message.height = value[1]
+
+            self.height = (
+                dp(10)
+                + name.height
+                + dp(4)
+                + message.height
+                + dp(10)
+            )
 
         message.bind(
-            texture_size=update_height
+            texture_size=update_message_height
         )
 
         self.add_widget(name)
         self.add_widget(message)
+
+        self.height = dp(50)
 
         with self.canvas.before:
 
@@ -249,7 +359,9 @@ class Bubble(BoxLayout):
             self.bg = RoundedRectangle(
                 pos=self.pos,
                 size=self.size,
-                radius=[dp(22)]
+                radius=[
+                    dp(22)
+                ]
             )
 
         self.bind(
@@ -264,7 +376,7 @@ class Bubble(BoxLayout):
 
 
 # =========================================================
-# LAYLA APP
+# LAYLA
 # =========================================================
 
 class Layla(App):
@@ -340,7 +452,7 @@ class Layla(App):
         root.add_widget(scroll)
 
         # =================================================
-        # TEACH / BRAIN BUTTONS
+        # BUTTON ROW
         # =================================================
 
         teach_row = BoxLayout(
@@ -486,8 +598,8 @@ class Layla(App):
 
         self.add_message(
             "Hello! Main Layla hoon. 🧠\n\n"
-            "Ab mere paas Offline Learning Brain hai.\n"
-            "Tum mujhe cheezein sikha sakte ho.",
+            "Main tumse seekh sakti hoon.\n"
+            "TEACH button se mujhe nayi information sikhao.",
             False
         )
 
@@ -514,7 +626,10 @@ class Layla(App):
             width=dp(320)
         )
 
-        def update_row(instance, value):
+        def update_row(
+            instance,
+            value
+        ):
 
             row.height = bubble.height
 
@@ -556,7 +671,7 @@ class Layla(App):
 
         msg = message.lower().strip()
 
-        # First search learned knowledge
+        # Learned knowledge
         learned = self.brain.find_answer(
             message
         )
@@ -565,12 +680,13 @@ class Layla(App):
 
             return learned
 
-        # Basic built-in brain
+        # Greeting
         if msg in [
             "hi",
             "hello",
             "hey",
-            "hii"
+            "hii",
+            "helo"
         ]:
 
             return (
@@ -578,10 +694,10 @@ class Layla(App):
                 "Main Layla hoon."
             )
 
+        # Name
         if (
             "tumhara naam" in msg
-            or
-            "your name" in msg
+            or "your name" in msg
         ):
 
             return (
@@ -589,10 +705,10 @@ class Layla(App):
                 "Main tumhari personal AI hoon."
             )
 
+        # How are you
         if (
             "kaise ho" in msg
-            or
-            "how are you" in msg
+            or "how are you" in msg
         ):
 
             return (
@@ -600,16 +716,37 @@ class Layla(App):
                 "Mujhe kuch naya sikhao."
             )
 
+        # Brain count
         if (
             "brain" in msg
-            and
-            "kitna" in msg
+            and "kitna" in msg
         ):
 
             return (
                 f"Mere brain me "
                 f"{self.brain.count()} "
                 f"learned memories hain."
+            )
+
+        # Thank you
+        if (
+            "thank you" in msg
+            or "thanks" in msg
+        ):
+
+            return (
+                "You're welcome! 😊"
+            )
+
+        # Bye
+        if msg in [
+            "bye",
+            "goodbye"
+        ]:
+
+            return (
+                "Bye! 👋\n"
+                "Phir milte hain."
             )
 
         return (
@@ -619,10 +756,13 @@ class Layla(App):
         )
 
     # =====================================================
-    # SEND MESSAGE
+    # SEND
     # =====================================================
 
-    def send_message(self, instance):
+    def send_message(
+        self,
+        instance
+    ):
 
         text = self.message.text.strip()
 
@@ -635,7 +775,7 @@ class Layla(App):
             True
         )
 
-        # Teaching command
+        # Teach system
         if self.process_teaching(text):
 
             self.message.text = ""
@@ -655,21 +795,28 @@ class Layla(App):
     # TEACH MODE
     # =====================================================
 
-    def teach_mode(self, instance):
+    def teach_mode(
+        self,
+        instance
+    ):
 
         self.add_message(
-            "🧠 Teaching mode:\n\n"
-            "Is format me message bhejo:\n\n"
+            "🧠 Teaching mode\n\n"
+            "Normal teaching:\n"
             "teach: question = answer\n\n"
-            "Example:\n"
-            "teach: mera favourite game kya hai = Free Fire",
+            "Complete conversation:\n"
+            "teach conversation:\n"
+            "Person A: Hello\n"
+            "Person B: Hi!\n"
+            "Person A: Kaise ho?\n"
+            "Person B: Main theek hoon.",
             False
         )
 
         self.message.text = ""
 
     # =====================================================
-    # HANDLE TEACH COMMAND
+    # PROCESS TEACHING
     # =====================================================
 
     def process_teaching(
@@ -677,20 +824,78 @@ class Layla(App):
         text
     ):
 
-        if not text.lower().startswith(
+        lower_text = text.lower().strip()
+
+        # -------------------------------------------------
+        # COMPLETE CONVERSATION TEACHING
+        # -------------------------------------------------
+
+        if lower_text.startswith(
+            "teach conversation:"
+        ):
+
+            conversation = text[
+                len("teach conversation:")
+            :].strip()
+
+            if not conversation:
+
+                self.add_message(
+                    "Conversation empty hai.\n\n"
+                    "Example:\n"
+                    "teach conversation:\n"
+                    "Person A: Hello\n"
+                    "Person B: Hi!",
+                    False
+                )
+
+                return True
+
+            learned = self.brain.teach_conversation(
+                conversation
+            )
+
+            if learned > 0:
+
+                self.add_message(
+                    "🧠 Conversation Learned!\n\n"
+                    f"{learned} conversation "
+                    f"responses memory me save ho gaye.",
+                    False
+                )
+
+            else:
+
+                self.add_message(
+                    "Conversation samajh nahi aayi.\n\n"
+                    "Is format ka use karo:\n"
+                    "Person A: Hello\n"
+                    "Person B: Hi!",
+                    False
+                )
+
+            return True
+
+        # -------------------------------------------------
+        # NORMAL TEACHING
+        # -------------------------------------------------
+
+        if not lower_text.startswith(
             "teach:"
         ):
 
             return False
 
-        data = text[6:].strip()
+        data = text[
+            len("teach:")
+        :].strip()
 
         if "=" not in data:
 
             self.add_message(
                 "Teaching format galat hai.\n\n"
                 "Example:\n"
-                "teach: mera naam kya hai = Cute Boy",
+                "teach: mera favourite game kya hai = Free Fire",
                 False
             )
 
@@ -713,17 +918,19 @@ class Layla(App):
 
             return True
 
-        self.brain.teach(
+        success = self.brain.teach(
             question,
             answer
         )
 
-        self.add_message(
-            "🧠 Learned!\n\n"
-            f"Question: {question}\n"
-            f"Answer: {answer}",
-            False
-        )
+        if success:
+
+            self.add_message(
+                "🧠 Learned!\n\n"
+                f"Question: {question}\n"
+                f"Answer: {answer}",
+                False
+            )
 
         return True
 
@@ -731,23 +938,30 @@ class Layla(App):
     # BRAIN STATUS
     # =====================================================
 
-    def show_brain(self, instance):
+    def show_brain(
+        self,
+        instance
+    ):
 
         count = self.brain.count()
 
         if count == 0:
 
             text = (
-                "🧠 Brain empty hai.\n\n"
+                "🧠 Layla Offline Brain\n\n"
+                "Abhi brain empty hai.\n\n"
                 "TEACH button se mujhe kuch sikhao."
             )
 
         else:
 
             text = (
-                f"🧠 Layla Offline Brain\n\n"
-                f"Learned knowledge: {count}\n\n"
-                "Ye knowledge phone par save hai."
+                "🧠 Layla Offline Brain\n\n"
+                f"Learned memories: {count}\n\n"
+                "Ye knowledge phone ke app storage "
+                "me save hai.\n\n"
+                "App update karne par knowledge.json "
+                "preserve rahega."
             )
 
         self.add_message(
@@ -756,10 +970,13 @@ class Layla(App):
         )
 
     # =====================================================
-    # VOICE INPUT
+    # VOICE
     # =====================================================
 
-    def voice_input(self, instance):
+    def voice_input(
+        self,
+        instance
+    ):
 
         if platform == "android":
 
