@@ -1,6 +1,9 @@
 import json
 import os
 import re
+import ast
+import operator
+import math
 
 from kivy.app import App
 from kivy.core.window import Window
@@ -69,7 +72,6 @@ class OfflineBrain:
             folder = os.path.dirname(self.file)
 
             if folder:
-
                 os.makedirs(
                     folder,
                     exist_ok=True
@@ -100,7 +102,6 @@ class OfflineBrain:
         answer = answer.strip()
 
         if not question or not answer:
-
             return False
 
         self.knowledge[question] = answer
@@ -112,21 +113,6 @@ class OfflineBrain:
     # -----------------------------------------------------
 
     def teach_conversation(self, conversation):
-
-        """
-        Complete conversation ko question-answer pairs
-        mein convert karta hai.
-
-        Example:
-
-        Person A: Hello
-        Person B: Hi
-
-        Person A: Kaise ho?
-        Person B: Main theek hoon.
-
-        Isse Person A ke messages ke responses save honge.
-        """
 
         lines = conversation.splitlines()
 
@@ -140,7 +126,6 @@ class OfflineBrain:
             if not line:
                 continue
 
-            # Person A / User / A
             match_a = re.match(
                 r"^(person\s*a|a|user)\s*:\s*(.+)$",
                 line,
@@ -153,7 +138,6 @@ class OfflineBrain:
 
                 continue
 
-            # Person B / Layla / B
             match_b = re.match(
                 r"^(person\s*b|b|layla|assistant)\s*:\s*(.+)$",
                 line,
@@ -175,7 +159,6 @@ class OfflineBrain:
                     pending_question = None
 
         if learned > 0:
-
             self.save()
 
         return learned
@@ -207,15 +190,11 @@ class OfflineBrain:
         msg = self.normalize(message)
 
         if not msg:
-
             return None
 
-        # Exact match
         if msg in self.knowledge:
-
             return self.knowledge[msg]
 
-        # Word matching
         best_answer = None
         best_score = 0
 
@@ -230,7 +209,6 @@ class OfflineBrain:
             )
 
             if not q_words:
-
                 continue
 
             common = msg_words.intersection(
@@ -254,6 +232,796 @@ class OfflineBrain:
     def count(self):
 
         return len(self.knowledge)
+
+
+# =========================================================
+# MATH ENGINE
+# =========================================================
+
+class MathEngine:
+
+    OPERATORS = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.FloorDiv: operator.floordiv,
+        ast.Mod: operator.mod,
+        ast.Pow: operator.pow,
+        ast.USub: operator.neg,
+        ast.UAdd: operator.pos
+    }
+
+    # -----------------------------------------------------
+
+    def calculate(self, expression):
+
+        expression = expression.strip()
+
+        expression = expression.replace(
+            "×",
+            "*"
+        )
+
+        expression = expression.replace(
+            "÷",
+            "/"
+        )
+
+        expression = expression.replace(
+            "^",
+            "**"
+        )
+
+        expression = expression.replace(
+            ",",
+            ""
+        )
+
+        if not re.fullmatch(
+            r"[\d\s\+\-\*\/\%\.\(\)]+",
+            expression
+        ):
+
+            return None
+
+        try:
+
+            tree = ast.parse(
+                expression,
+                mode="eval"
+            )
+
+            value = self._evaluate(
+                tree.body
+            )
+
+            if not math.isfinite(
+                float(value)
+            ):
+
+                return None
+
+            return value
+
+        except Exception:
+
+            return None
+
+    # -----------------------------------------------------
+
+    def _evaluate(self, node):
+
+        if isinstance(
+            node,
+            ast.Constant
+        ):
+
+            if isinstance(
+                node.value,
+                (int, float)
+            ):
+
+                return node.value
+
+            raise ValueError
+
+        if isinstance(
+            node,
+            ast.BinOp
+        ):
+
+            if type(node.op) not in self.OPERATORS:
+                raise ValueError
+
+            left = self._evaluate(
+                node.left
+            )
+
+            right = self._evaluate(
+                node.right
+            )
+
+            if isinstance(
+                node.op,
+                ast.Pow
+            ):
+
+                if abs(right) > 100:
+                    raise ValueError
+
+            return self.OPERATORS[
+                type(node.op)
+            ](
+                left,
+                right
+            )
+
+        if isinstance(
+            node,
+            ast.UnaryOp
+        ):
+
+            if type(node.op) not in self.OPERATORS:
+                raise ValueError
+
+            return self.OPERATORS[
+                type(node.op)
+            ](
+                self._evaluate(
+                    node.operand
+                )
+            )
+
+        raise ValueError
+
+    # -----------------------------------------------------
+
+    def format_number(self, value):
+
+        if float(value).is_integer():
+
+            return str(
+                int(value)
+            )
+
+        return f"{value:.10g}"
+
+    # -----------------------------------------------------
+
+    def answer(self, message):
+
+        text = message.lower().strip()
+
+        # Percentage
+        match = re.fullmatch(
+            r"(\d+(?:\.\d+)?)\s*%\s*(?:of|ka)\s*(\d+(?:\.\d+)?)",
+            text
+        )
+
+        if match:
+
+            value = (
+                float(match.group(1))
+                * float(match.group(2))
+                / 100
+            )
+
+            return self.format_number(
+                value
+            )
+
+        expression = re.sub(
+            r"\b(what is|calculate|solve|answer|equals)\b",
+            "",
+            text
+        ).strip()
+
+        expression = expression.replace(
+            "×",
+            "*"
+        )
+
+        expression = expression.replace(
+            "÷",
+            "/"
+        )
+
+        expression = expression.replace(
+            "^",
+            "**"
+        )
+
+        if not re.fullmatch(
+            r"[\d\s\+\-\*\/\%\.\(\)\^×÷]+",
+            expression
+        ):
+
+            return None
+
+        value = self.calculate(
+            expression
+        )
+
+        if value is None:
+            return None
+
+        return self.format_number(
+            value
+        )
+
+
+# =========================================================
+# PHYSICS ENGINE
+# =========================================================
+
+class PhysicsEngine:
+
+    def numbers(self, text):
+
+        return [
+            float(x)
+            for x in re.findall(
+                r"(?<![a-z])\d+(?:\.\d+)?",
+                text.lower()
+            )
+        ]
+
+    # -----------------------------------------------------
+
+    def fmt(self, value):
+
+        if float(value).is_integer():
+
+            return str(
+                int(value)
+            )
+
+        return f"{value:.6g}"
+
+    # -----------------------------------------------------
+
+    def answer(self, message):
+
+        m = message.lower().strip()
+
+        nums = self.numbers(
+            m
+        )
+
+        # Ohm's Law
+        if (
+            "ohm" in m
+            or "ohm's law" in m
+        ):
+
+            return (
+                "Ohm's Law:\n"
+                "V = I × R\n\n"
+                "V = Voltage\n"
+                "I = Current\n"
+                "R = Resistance"
+            )
+
+        # Newton 2nd Law
+        if (
+            "newton" in m
+            and (
+                "second law" in m
+                or "2nd law" in m
+            )
+        ):
+
+            return (
+                "Newton's Second Law:\n"
+                "F = m × a"
+            )
+
+        # Kinetic Energy
+        if "kinetic energy" in m:
+
+            return (
+                "Kinetic Energy:\n"
+                "KE = ½mv²"
+            )
+
+        # Potential Energy
+        if "potential energy" in m:
+
+            return (
+                "Potential Energy:\n"
+                "PE = mgh"
+            )
+
+        # Momentum
+        if "momentum" in m:
+
+            return (
+                "Momentum:\n"
+                "p = m × v"
+            )
+
+        # Force calculation
+        if (
+            "force" in m
+            and (
+                "mass" in m
+                or "acceleration" in m
+            )
+            and len(nums) >= 2
+        ):
+
+            result = (
+                nums[0]
+                * nums[1]
+            )
+
+            return (
+                "F = m × a\n"
+                f"F = {self.fmt(nums[0])} × "
+                f"{self.fmt(nums[1])}\n"
+                f"F = {self.fmt(result)} N"
+            )
+
+        # Speed
+        if (
+            "speed" in m
+            and "distance" in m
+            and "time" in m
+            and len(nums) >= 2
+        ):
+
+            result = (
+                nums[0]
+                / nums[1]
+            )
+
+            return (
+                "Speed = Distance ÷ Time\n"
+                f"Speed = {self.fmt(result)}"
+            )
+
+        # Distance
+        if (
+            "distance" in m
+            and "speed" in m
+            and "time" in m
+            and len(nums) >= 2
+        ):
+
+            result = (
+                nums[0]
+                * nums[1]
+            )
+
+            return (
+                "Distance = Speed × Time\n"
+                f"Distance = {self.fmt(result)}"
+            )
+
+        return None
+
+
+# =========================================================
+# CHEMISTRY ENGINE
+# =========================================================
+
+class ChemistryEngine:
+
+    elements = {
+
+        "hydrogen": ("H", 1.008),
+
+        "helium": ("He", 4.003),
+
+        "carbon": ("C", 12.011),
+
+        "nitrogen": ("N", 14.007),
+
+        "oxygen": ("O", 15.999),
+
+        "sodium": ("Na", 22.990),
+
+        "magnesium": ("Mg", 24.305),
+
+        "aluminium": ("Al", 26.982),
+
+        "silicon": ("Si", 28.085),
+
+        "phosphorus": ("P", 30.974),
+
+        "sulfur": ("S", 32.06),
+
+        "chlorine": ("Cl", 35.45),
+
+        "potassium": ("K", 39.098),
+
+        "calcium": ("Ca", 40.078),
+
+        "iron": ("Fe", 55.845),
+
+        "copper": ("Cu", 63.546),
+
+        "zinc": ("Zn", 65.38),
+
+        "silver": ("Ag", 107.868),
+
+        "gold": ("Au", 196.967)
+
+    }
+
+    # -----------------------------------------------------
+
+    def answer(self, message):
+
+        m = message.lower().strip()
+
+        if (
+            "water" in m
+            and (
+                "formula" in m
+                or "chemical" in m
+            )
+        ):
+
+            return (
+                "Water ka chemical formula: H₂O"
+            )
+
+        if (
+            "carbon dioxide" in m
+            and "formula" in m
+        ):
+
+            return (
+                "Carbon dioxide ka formula: CO₂"
+            )
+
+        if (
+            "mole" in m
+            and "formula" in m
+        ):
+
+            return (
+                "Moles ka formula:\n"
+                "n = mass ÷ molar mass"
+            )
+
+        for name, data in self.elements.items():
+
+            symbol, mass = data
+
+            if (
+                f"symbol of {name}" in m
+                or m == name
+            ):
+
+                return (
+                    f"{name.title()} = {symbol}"
+                )
+
+            if (
+                name in m
+                and (
+                    "atomic mass" in m
+                    or "atomic weight" in m
+                )
+            ):
+
+                return (
+                    f"{name.title()} ({symbol}) "
+                    f"atomic mass ≈ {mass} u."
+                )
+
+        return None
+
+
+# =========================================================
+# UNIT CONVERTER
+# =========================================================
+
+class UnitEngine:
+
+    factors = {
+
+        "km": 1000,
+
+        "m": 1,
+
+        "cm": 0.01,
+
+        "mm": 0.001,
+
+        "kg": 1,
+
+        "g": 0.001,
+
+        "mg": 0.000001,
+
+        "l": 1,
+
+        "ml": 0.001
+
+    }
+
+    groups = [
+
+        {
+            "km",
+            "m",
+            "cm",
+            "mm"
+        },
+
+        {
+            "kg",
+            "g",
+            "mg"
+        },
+
+        {
+            "l",
+            "ml"
+        }
+
+    ]
+
+    # -----------------------------------------------------
+
+    def fmt(self, value):
+
+        if float(value).is_integer():
+
+            return str(
+                int(value)
+            )
+
+        return f"{value:.8g}"
+
+    # -----------------------------------------------------
+
+    def answer(self, message):
+
+        m = message.lower()
+
+        m = m.replace(
+            "→",
+            " to "
+        )
+
+        m = re.sub(
+            r"\s+",
+            " ",
+            m
+        ).strip()
+
+        match = re.search(
+            r"(-?\d+(?:\.\d+)?)\s*"
+            r"(km|m|cm|mm|kg|g|mg|l|ml)\s*"
+            r"(?:to|in|into)\s*"
+            r"(km|m|cm|mm|kg|g|mg|l|ml)",
+            m
+        )
+
+        if match:
+
+            value = float(
+                match.group(1)
+            )
+
+            src = match.group(2)
+            dst = match.group(3)
+
+            compatible = any(
+                src in group
+                and dst in group
+                for group in self.groups
+            )
+
+            if not compatible:
+
+                return (
+                    "Ye dono units "
+                    "compatible nahi hain."
+                )
+
+            result = (
+                value
+                * self.factors[src]
+                / self.factors[dst]
+            )
+
+            return (
+                f"{self.fmt(result)} {dst}"
+            )
+
+        # Celsius to Fahrenheit
+        c = re.search(
+            r"(-?\d+(?:\.\d+)?)\s*"
+            r"(?:°?\s*c)\s*to\s*"
+            r"(?:°?\s*f|fahrenheit)",
+            m
+        )
+
+        if c:
+
+            value = float(
+                c.group(1)
+            )
+
+            result = (
+                value * 9 / 5
+                + 32
+            )
+
+            return (
+                f"{self.fmt(result)} °F"
+            )
+
+        # Fahrenheit to Celsius
+        f = re.search(
+            r"(-?\d+(?:\.\d+)?)\s*"
+            r"(?:°?\s*f)\s*to\s*"
+            r"(?:°?\s*c|celsius)",
+            m
+        )
+
+        if f:
+
+            value = float(
+                f.group(1)
+            )
+
+            result = (
+                value - 32
+            ) * 5 / 9
+
+            return (
+                f"{self.fmt(result)} °C"
+            )
+
+        return None
+
+
+# =========================================================
+# STUDY ENGINE
+# =========================================================
+
+class StudyEngine:
+
+    data = {
+
+        "photosynthesis": (
+            "Photosynthesis is the process by which "
+            "green plants use light energy to make "
+            "food from carbon dioxide and water."
+        ),
+
+        "cell": (
+            "A cell is the basic structural and "
+            "functional unit of life."
+        ),
+
+        "atom": (
+            "An atom is the smallest unit of an "
+            "element that retains its chemical "
+            "properties."
+        ),
+
+        "newton's first law": (
+            "An object remains at rest or in uniform "
+            "motion unless acted upon by an external "
+            "unbalanced force."
+        )
+
+    }
+
+    # -----------------------------------------------------
+
+    def answer(self, message):
+
+        m = message.lower()
+
+        for key, value in self.data.items():
+
+            if (
+                key in m
+                and any(
+                    word in m
+                    for word in [
+                        "what",
+                        "explain",
+                        "define",
+                        "meaning",
+                        "definition",
+                        "kya"
+                    ]
+                )
+            ):
+
+                return value
+
+        return None
+
+
+# =========================================================
+# QUIZ ENGINE
+# =========================================================
+
+class QuizEngine:
+
+    questions = [
+
+        (
+            "Math",
+            "What is 12 × 8?",
+            "96"
+        ),
+
+        (
+            "Physics",
+            "What is the formula for force?",
+            "F = m × a"
+        ),
+
+        (
+            "Chemistry",
+            "What is the formula of water?",
+            "H2O"
+        ),
+
+        (
+            "Biology",
+            "What is the basic unit of life?",
+            "Cell"
+        )
+
+    ]
+
+    # -----------------------------------------------------
+
+    def answer(self, message):
+
+        m = message.lower()
+
+        if "quiz" not in m:
+            return None
+
+        topic = None
+
+        for name in [
+            "math",
+            "physics",
+            "chemistry",
+            "biology"
+        ]:
+
+            if name in m:
+
+                topic = name.title()
+
+                break
+
+        pool = [
+            q for q in self.questions
+            if not topic
+            or q[0] == topic
+        ]
+
+        if not pool:
+
+            return (
+                "Available quiz topics:\n"
+                "Math, Physics, Chemistry, Biology"
+            )
+
+        subject, question, answer = pool[0]
+
+        return (
+            f"🎯 {subject} Quiz\n\n"
+            f"Question: {question}\n\n"
+            f"Answer: {answer}"
+        )
 
 
 # =========================================================
@@ -283,7 +1051,12 @@ class Bubble(BoxLayout):
         )
 
         name = Label(
-            text="You" if is_user else "Layla",
+            text=(
+                "You"
+                if is_user
+                else
+                "Layla"
+            ),
             color=(
                 (0.75, 0.55, 1, 1)
                 if not is_user
@@ -300,7 +1073,12 @@ class Bubble(BoxLayout):
 
         message = Label(
             text=text,
-            color=(0.95, 0.95, 1, 1),
+            color=(
+                0.95,
+                0.95,
+                1,
+                1
+            ),
             font_size=dp(17),
             size_hint_y=None,
             halign="left",
@@ -369,7 +1147,10 @@ class Bubble(BoxLayout):
             size=self.update_bg
         )
 
-    def update_bg(self, *args):
+    def update_bg(
+        self,
+        *args
+    ):
 
         self.bg.pos = self.pos
         self.bg.size = self.size
@@ -383,7 +1164,23 @@ class Layla(App):
 
     def build(self):
 
+        # Existing Brain
         self.brain = OfflineBrain()
+
+        # New Engines
+        self.math_engine = MathEngine()
+
+        self.physics_engine = PhysicsEngine()
+
+        self.chemistry_engine = ChemistryEngine()
+
+        self.unit_engine = UnitEngine()
+
+        self.study_engine = StudyEngine()
+
+        self.quiz_engine = QuizEngine()
+
+        # -------------------------------------------------
 
         root = BoxLayout(
             orientation="vertical",
@@ -396,9 +1193,9 @@ class Layla(App):
             spacing=dp(8)
         )
 
-        # =================================================
+        # -------------------------------------------------
         # HEADER
-        # =================================================
+        # -------------------------------------------------
 
         header = BoxLayout(
             orientation="vertical",
@@ -406,27 +1203,38 @@ class Layla(App):
             height=dp(90)
         )
 
-        title = Label(
-            text="LAYLA",
-            font_size=dp(30),
-            bold=True,
-            color=(0.85, 0.65, 1, 1)
+        header.add_widget(
+            Label(
+                text="LAYLA",
+                font_size=dp(30),
+                bold=True,
+                color=(
+                    0.85,
+                    0.65,
+                    1,
+                    1
+                )
+            )
         )
 
-        subtitle = Label(
-            text="Personal AI • Offline Brain",
-            font_size=dp(15),
-            color=(0.55, 0.52, 0.62, 1)
+        header.add_widget(
+            Label(
+                text="Personal AI • Offline Brain",
+                font_size=dp(15),
+                color=(
+                    0.55,
+                    0.52,
+                    0.62,
+                    1
+                )
+            )
         )
-
-        header.add_widget(title)
-        header.add_widget(subtitle)
 
         root.add_widget(header)
 
-        # =================================================
+        # -------------------------------------------------
         # CHAT
-        # =================================================
+        # -------------------------------------------------
 
         scroll = ScrollView(
             do_scroll_x=False,
@@ -447,13 +1255,17 @@ class Layla(App):
             )
         )
 
-        scroll.add_widget(self.chat)
+        scroll.add_widget(
+            self.chat
+        )
 
-        root.add_widget(scroll)
+        root.add_widget(
+            scroll
+        )
 
-        # =================================================
-        # BUTTON ROW
-        # =================================================
+        # -------------------------------------------------
+        # BUTTONS
+        # -------------------------------------------------
 
         teach_row = BoxLayout(
             size_hint_y=None,
@@ -501,11 +1313,13 @@ class Layla(App):
             brain_button
         )
 
-        root.add_widget(teach_row)
+        root.add_widget(
+            teach_row
+        )
 
-        # =================================================
+        # -------------------------------------------------
         # INPUT
-        # =================================================
+        # -------------------------------------------------
 
         bottom = BoxLayout(
             size_hint_y=None,
@@ -590,16 +1404,19 @@ class Layla(App):
             send
         )
 
-        root.add_widget(bottom)
+        root.add_widget(
+            bottom
+        )
 
-        # =================================================
+        # -------------------------------------------------
         # WELCOME
-        # =================================================
+        # -------------------------------------------------
 
         self.add_message(
             "Hello! Main Layla hoon. 🧠\n\n"
             "Main tumse seekh sakti hoon.\n"
-            "TEACH button se mujhe nayi information sikhao.",
+            "Math, Physics, Chemistry, Units, "
+            "Study aur Quiz engines ready hain.",
             False
         )
 
@@ -659,19 +1476,24 @@ class Layla(App):
                 Widget()
             )
 
-        self.chat.add_widget(row)
+        self.chat.add_widget(
+            row
+        )
 
         self.scroll.scroll_y = 0
 
     # =====================================================
-    # AI REPLY
+    # AI ROUTER
     # =====================================================
 
-    def ai_reply(self, message):
+    def ai_reply(
+        self,
+        message
+    ):
 
         msg = message.lower().strip()
 
-        # Learned knowledge
+        # Existing learned knowledge FIRST
         learned = self.brain.find_answer(
             message
         )
@@ -680,7 +1502,92 @@ class Layla(App):
 
             return learned
 
-        # Greeting
+        # -------------------------------------------------
+        # MATH
+        # -------------------------------------------------
+
+        result = self.math_engine.answer(
+            message
+        )
+
+        if result is not None:
+
+            return (
+                f"🧮 {result}"
+            )
+
+        # -------------------------------------------------
+        # UNIT
+        # -------------------------------------------------
+
+        result = self.unit_engine.answer(
+            message
+        )
+
+        if result is not None:
+
+            return (
+                f"📏 {result}"
+            )
+
+        # -------------------------------------------------
+        # PHYSICS
+        # -------------------------------------------------
+
+        result = self.physics_engine.answer(
+            message
+        )
+
+        if result is not None:
+
+            return (
+                f"⚛️ {result}"
+            )
+
+        # -------------------------------------------------
+        # CHEMISTRY
+        # -------------------------------------------------
+
+        result = self.chemistry_engine.answer(
+            message
+        )
+
+        if result is not None:
+
+            return (
+                f"🧪 {result}"
+            )
+
+        # -------------------------------------------------
+        # STUDY
+        # -------------------------------------------------
+
+        result = self.study_engine.answer(
+            message
+        )
+
+        if result is not None:
+
+            return (
+                f"📚 {result}"
+            )
+
+        # -------------------------------------------------
+        # QUIZ
+        # -------------------------------------------------
+
+        result = self.quiz_engine.answer(
+            message
+        )
+
+        if result is not None:
+
+            return result
+
+        # -------------------------------------------------
+        # OLD BASIC RESPONSES
+        # -------------------------------------------------
+
         if msg in [
             "hi",
             "hello",
@@ -694,7 +1601,6 @@ class Layla(App):
                 "Main Layla hoon."
             )
 
-        # Name
         if (
             "tumhara naam" in msg
             or "your name" in msg
@@ -705,7 +1611,6 @@ class Layla(App):
                 "Main tumhari personal AI hoon."
             )
 
-        # How are you
         if (
             "kaise ho" in msg
             or "how are you" in msg
@@ -716,7 +1621,6 @@ class Layla(App):
                 "Mujhe kuch naya sikhao."
             )
 
-        # Brain count
         if (
             "brain" in msg
             and "kitna" in msg
@@ -728,7 +1632,6 @@ class Layla(App):
                 f"learned memories hain."
             )
 
-        # Thank you
         if (
             "thank you" in msg
             or "thanks" in msg
@@ -738,7 +1641,6 @@ class Layla(App):
                 "You're welcome! 😊"
             )
 
-        # Bye
         if msg in [
             "bye",
             "goodbye"
@@ -775,14 +1677,18 @@ class Layla(App):
             True
         )
 
-        # Teach system
-        if self.process_teaching(text):
+        # Teach
+        if self.process_teaching(
+            text
+        ):
 
             self.message.text = ""
 
             return
 
-        reply = self.ai_reply(text)
+        reply = self.ai_reply(
+            text
+        )
 
         self.add_message(
             reply,
@@ -804,12 +1710,12 @@ class Layla(App):
             "🧠 Teaching mode\n\n"
             "Normal teaching:\n"
             "teach: question = answer\n\n"
-            "Complete conversation:\n"
+            "Example:\n"
+            "teach: mera favourite game kya hai = Free Fire\n\n"
+            "Conversation teaching format:\n"
             "teach conversation:\n"
             "Person A: Hello\n"
-            "Person B: Hi!\n"
-            "Person A: Kaise ho?\n"
-            "Person B: Main theek hoon.",
+            "Person B: Hi!",
             False
         )
 
@@ -827,7 +1733,7 @@ class Layla(App):
         lower_text = text.lower().strip()
 
         # -------------------------------------------------
-        # COMPLETE CONVERSATION TEACHING
+        # CONVERSATION TEACHING
         # -------------------------------------------------
 
         if lower_text.startswith(
@@ -843,7 +1749,6 @@ class Layla(App):
                 self.add_message(
                     "Conversation empty hai.\n\n"
                     "Example:\n"
-                    "teach conversation:\n"
                     "Person A: Hello\n"
                     "Person B: Hi!",
                     False
@@ -855,12 +1760,12 @@ class Layla(App):
                 conversation
             )
 
-            if learned > 0:
+            if learned:
 
                 self.add_message(
                     "🧠 Conversation Learned!\n\n"
-                    f"{learned} conversation "
-                    f"responses memory me save ho gaye.",
+                    f"{learned} responses "
+                    "memory me save ho gaye.",
                     False
                 )
 
@@ -868,7 +1773,6 @@ class Layla(App):
 
                 self.add_message(
                     "Conversation samajh nahi aayi.\n\n"
-                    "Is format ka use karo:\n"
                     "Person A: Hello\n"
                     "Person B: Hi!",
                     False
@@ -958,10 +1862,10 @@ class Layla(App):
             text = (
                 "🧠 Layla Offline Brain\n\n"
                 f"Learned memories: {count}\n\n"
-                "Ye knowledge phone ke app storage "
+                "Knowledge phone ke app storage "
                 "me save hai.\n\n"
                 "App update karne par knowledge.json "
-                "preserve rahega."
+                "normally preserve rahega."
             )
 
         self.add_message(
@@ -970,7 +1874,7 @@ class Layla(App):
         )
 
     # =====================================================
-    # VOICE
+    # MIC
     # =====================================================
 
     def voice_input(
