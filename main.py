@@ -1583,54 +1583,87 @@ class Layla(BoxLayout):
     # --------------------------------------------------------
 
     def voice_input(self, *args):
+    try:
+        from android import activity
+        from jnius import autoclass
 
-        try:
-            from plyer import stt
+        self.voice_request_code = 1001
 
-            if hasattr(stt, "start"):
-                stt.start()
-                self.add_bot_message(
-                    "Voice input start karne ki koshish ki gayi."
-                )
-                return
+        # Result callback ko sirf ek baar bind karo
+        if not getattr(self, "_voice_bound", False):
+            activity.bind(on_activity_result=self.on_voice_result)
+            self._voice_bound = True
 
-        except Exception:
-            pass
+        Intent = autoclass("android.content.Intent")
+        RecognizerIntent = autoclass(
+            "android.speech.RecognizerIntent"
+        )
 
-        try:
-            from jnius import autoclass
+        intent = Intent(
+            RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+        )
 
-            PythonActivity = autoclass(
-                "org.kivy.android.PythonActivity"
-            )
+        intent.putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        )
 
-            Intent = autoclass(
-                "android.content.Intent"
-            )
+        intent.putExtra(
+            RecognizerIntent.EXTRA_PROMPT,
+            "Speak to Layla"
+        )
 
-            RecognizerIntent = autoclass(
-                "android.speech.RecognizerIntent"
-            )
+        intent.putExtra(
+            RecognizerIntent.EXTRA_MAX_RESULTS,
+            1
+        )
 
-            intent = Intent(
-                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
-            )
+        PythonActivity = autoclass(
+            "org.kivy.android.PythonActivity"
+        )
 
-            intent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-            )
+        PythonActivity.mActivity.startActivityForResult(
+            intent,
+            self.voice_request_code
+        )
 
-            PythonActivity.mActivity.startActivityForResult(
-                intent,
-                1001
-            )
+    except Exception as e:
+        self.add_bot_message(
+            "Voice input start nahi ho paya: " + str(e)
+        )
 
-        except Exception:
-            self.add_bot_message(
-                "Voice input is build mein available nahi hai. "
-                "Android speech dependency check karni hogi."
-            )
+
+def on_voice_result(self, request_code, result_code, intent):
+    if request_code != getattr(self, "voice_request_code", 1001):
+        return
+
+    try:
+        from jnius import autoclass
+
+        RESULT_OK = -1
+
+        if result_code != RESULT_OK or intent is None:
+            return
+
+        RecognizerIntent = autoclass(
+            "android.speech.RecognizerIntent"
+        )
+
+        results = intent.getStringArrayListExtra(
+            RecognizerIntent.EXTRA_RESULTS
+        )
+
+        if results and results.size() > 0:
+            text = str(results.get(0)).strip()
+
+            if text:
+                self.input_box.text = text
+                self.input_box.focus = True
+
+    except Exception as e:
+        self.add_bot_message(
+            "Voice result read nahi ho paya: " + str(e)
+        )
 
 
 # ============================================================
