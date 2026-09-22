@@ -9,7 +9,7 @@ source.dir = .
 source.include_exts = py,png,jpg,jpeg,json,kv,atlas
 source.exclude_patterns = license, data/screens/three.kv, tests/*, */tests/*
 version = 0.1
-requirements = python3,kivy
+requirements = python3,kivy,plyer
 orientation = portrait
 fullscreen = 0
 
