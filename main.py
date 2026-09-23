@@ -24,9 +24,9 @@ except Exception:
     filechooser = None
 
 
-# ============================================================
+# =========================================================
 # SAFE MATH
-# ============================================================
+# =========================================================
 
 class SafeMath:
 
@@ -49,7 +49,10 @@ class SafeMath:
         expression = expression.replace("÷", "/")
         expression = expression.replace("^", "**")
 
-        tree = ast.parse(expression, mode="eval")
+        tree = ast.parse(
+            expression,
+            mode="eval"
+        )
 
         return cls._eval(tree.body)
 
@@ -58,7 +61,10 @@ class SafeMath:
 
         if isinstance(node, ast.Constant):
 
-            if isinstance(node.value, (int, float)):
+            if isinstance(
+                node.value,
+                (int, float)
+            ):
                 return node.value
 
             raise ValueError("Invalid number")
@@ -69,7 +75,9 @@ class SafeMath:
         if isinstance(node, ast.BinOp):
 
             if type(node.op) not in cls.OPS:
-                raise ValueError("Operator not allowed")
+                raise ValueError(
+                    "Operator not allowed"
+                )
 
             left = cls._eval(node.left)
             right = cls._eval(node.right)
@@ -77,25 +85,34 @@ class SafeMath:
             if isinstance(node.op, ast.Pow):
 
                 if abs(right) > 100:
-                    raise ValueError("Power too large")
+                    raise ValueError(
+                        "Power too large"
+                    )
 
-            return cls.OPS[type(node.op)](left, right)
+            return cls.OPS[type(node.op)](
+                left,
+                right
+            )
 
         if isinstance(node, ast.UnaryOp):
 
             if type(node.op) not in cls.OPS:
-                raise ValueError("Operator not allowed")
+                raise ValueError(
+                    "Operator not allowed"
+                )
 
             return cls.OPS[type(node.op)](
                 cls._eval(node.operand)
             )
 
-        raise ValueError("Invalid expression")
+        raise ValueError(
+            "Invalid expression"
+        )
 
 
-# ============================================================
+# =========================================================
 # TEXT NORMALIZER
-# ============================================================
+# =========================================================
 
 class TextNormalizer:
 
@@ -103,7 +120,6 @@ class TextNormalizer:
     def normalize(text):
 
         text = text.strip().lower()
-
         text = re.sub(
             r"\s+",
             " ",
@@ -115,14 +131,12 @@ class TextNormalizer:
             "hw r u": "how are you",
             "how r u": "how are you",
             "how r you": "how are you",
-            "how r u?": "how are you",
             "hru": "how are you",
 
             "kese ho": "kaise ho",
             "kaisa hai": "kaise ho",
             "kaisi ho": "kaise ho",
             "kaise h": "kaise ho",
-            "kaise ho": "kaise ho",
 
             "thik ho": "theek ho",
             "thk ho": "theek ho",
@@ -144,9 +158,9 @@ class TextNormalizer:
         )
 
 
-# ============================================================
+# =========================================================
 # SPELL CORRECTOR
-# ============================================================
+# =========================================================
 
 class SpellCorrector:
 
@@ -192,7 +206,10 @@ class SpellCorrector:
     ]
 
     @classmethod
-    def correct(cls, text):
+    def correct(
+        cls,
+        text
+    ):
 
         parts = text.split()
 
@@ -209,7 +226,6 @@ class SpellCorrector:
             if len(clean) < 4:
 
                 result.append(word)
-
                 continue
 
             match = difflib.get_close_matches(
@@ -233,9 +249,9 @@ class SpellCorrector:
         return " ".join(result)
 
 
-# ============================================================
-# AUTOMATIC MEMORY
-# ============================================================
+# =========================================================
+# OFFLINE MEMORY
+# =========================================================
 
 class OfflineBrain:
 
@@ -256,7 +272,9 @@ class OfflineBrain:
 
         try:
 
-            if os.path.exists(self.file):
+            if os.path.exists(
+                self.file
+            ):
 
                 with open(
                     self.file,
@@ -300,10 +318,12 @@ class OfflineBrain:
 
             pass
 
-    def learn(self, text):
+    def learn(
+        self,
+        text
+    ):
 
         original = text.strip()
-
         lower = original.lower()
 
         patterns = [
@@ -358,7 +378,9 @@ class OfflineBrain:
 
             if match:
 
-                value = match.group(1).strip()
+                value = match.group(
+                    1
+                ).strip()
 
                 if value:
 
@@ -370,7 +392,10 @@ class OfflineBrain:
 
         return False
 
-    def answer(self, text):
+    def answer(
+        self,
+        text
+    ):
 
         lower = text.lower().strip()
 
@@ -385,7 +410,8 @@ class OfflineBrain:
                 )
 
             return (
-                "Tumne abhi tak apna naam nahi bataya."
+                "Tumne abhi tak "
+                "apna naam nahi bataya."
             )
 
         if "mera naam kya hai" in lower:
@@ -399,7 +425,8 @@ class OfflineBrain:
                 )
 
             return (
-                "Tumne abhi tak apna naam nahi bataya."
+                "Tumne abhi tak "
+                "apna naam nahi bataya."
             )
 
         if (
@@ -412,7 +439,11 @@ class OfflineBrain:
 
                 return (
                     "Tumhara favourite game "
-                    + str(self.data["favourite_game"])
+                    + str(
+                        self.data[
+                            "favourite_game"
+                        ]
+                    )
                     + " hai."
                 )
 
@@ -426,23 +457,27 @@ class OfflineBrain:
 
                 return (
                     "Tumne bataya tha ki tumhe "
-                    + str(self.data["likes"])
+                    + str(
+                        self.data["likes"]
+                    )
                     + " pasand hai."
                 )
 
         return None
 
 
-# ============================================================
+# =========================================================
 # CONVERSATION
-# ============================================================
+# =========================================================
 
 class ConversationEngine:
 
     @staticmethod
     def solve(text):
 
-        t = TextNormalizer.normalize(text)
+        t = TextNormalizer.normalize(
+            text
+        )
 
         greetings = {
             "hi",
@@ -457,7 +492,8 @@ class ConversationEngine:
 
             return (
                 "Hello! Main Layla hoon. "
-                "Batao, main tumhari kis cheez mein help karun?"
+                "Batao, main tumhari kis "
+                "cheez mein help karun?"
             )
 
         if t in (
@@ -506,9 +542,11 @@ class ConversationEngine:
         ):
 
             return (
-                "Main Layla hoon, tumhari personal AI assistant. "
-                "Main chat, maths, study, coding aur creative tasks "
-                "mein help kar sakti hoon."
+                "Main Layla hoon, "
+                "tumhari personal AI assistant. "
+                "Main chat, maths, study, coding "
+                "aur creative tasks mein help "
+                "kar sakti hoon."
             )
 
         if (
@@ -526,17 +564,18 @@ class ConversationEngine:
         ):
 
             return (
-                "Main conversation, maths, study, homework, coding, "
-                "creative writing, reasoning, general knowledge aur "
-                "basic file/photo/video selection mein help kar sakti hoon."
+                "Main conversation, maths, study, "
+                "homework, coding, creative writing, "
+                "reasoning, general knowledge aur "
+                "file processing mein help kar sakti hoon."
             )
 
         return None
 
 
-# ============================================================
+# =========================================================
 # MATH
-# ============================================================
+# =========================================================
 
 class MathEngine:
 
@@ -616,9 +655,9 @@ class MathEngine:
             return None
 
 
-# ============================================================
+# =========================================================
 # ADVANCED MATH
-# ============================================================
+# =========================================================
 
 class AdvancedMathEngine:
 
@@ -648,7 +687,9 @@ class AdvancedMathEngine:
 
                     return (
                         "Answer: "
-                        + str(math.sqrt(x))
+                        + str(
+                            math.sqrt(x)
+                        )
                     )
 
                 if "sin" in t:
@@ -737,9 +778,9 @@ class AdvancedMathEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # GEOMETRY
-# ============================================================
+# =========================================================
 
 class GeometryEngine:
 
@@ -843,9 +884,9 @@ class GeometryEngine:
         return None
 
 
-# ============================================================
-# UNIT CONVERTER
-# ============================================================
+# =========================================================
+# UNIT
+# =========================================================
 
 class UnitEngine:
 
@@ -871,7 +912,10 @@ class UnitEngine:
     }
 
     @classmethod
-    def solve(cls, text):
+    def solve(
+        cls,
+        text
+    ):
 
         t = text.lower()
 
@@ -910,8 +954,8 @@ class UnitEngine:
         if key in cls.FACTORS:
 
             result = (
-                value
-                * cls.FACTORS[key]
+                value *
+                cls.FACTORS[key]
             )
 
             if result.is_integer():
@@ -931,9 +975,9 @@ class UnitEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # PHYSICS
-# ============================================================
+# =========================================================
 
 class PhysicsEngine:
 
@@ -954,8 +998,13 @@ class PhysicsEngine:
                 and len(nums) >= 2
             ):
 
-                distance = float(nums[0])
-                time = float(nums[1])
+                distance = float(
+                    nums[0]
+                )
+
+                time = float(
+                    nums[1]
+                )
 
                 if time == 0:
 
@@ -1034,9 +1083,9 @@ class PhysicsEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # CHEMISTRY
-# ============================================================
+# =========================================================
 
 class ChemistryEngine:
 
@@ -1099,9 +1148,9 @@ class ChemistryEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # PERIODIC TABLE
-# ============================================================
+# =========================================================
 
 class PeriodicTableEngine:
 
@@ -1130,7 +1179,10 @@ class PeriodicTableEngine:
     }
 
     @classmethod
-    def solve(cls, text):
+    def solve(
+        cls,
+        text
+    ):
 
         t = text.lower()
 
@@ -1147,9 +1199,9 @@ class PeriodicTableEngine:
 
         if symbol in cls.ELEMENTS:
 
-            name, number = cls.ELEMENTS[
-                symbol
-            ]
+            name, number = (
+                cls.ELEMENTS[symbol]
+            )
 
             return (
                 name
@@ -1163,9 +1215,9 @@ class PeriodicTableEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # BIOLOGY
-# ============================================================
+# =========================================================
 
 class BiologyEngine:
 
@@ -1201,9 +1253,9 @@ class BiologyEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # GENERAL KNOWLEDGE
-# ============================================================
+# =========================================================
 
 class GeneralKnowledgeEngine:
 
@@ -1232,7 +1284,10 @@ class GeneralKnowledgeEngine:
     }
 
     @classmethod
-    def solve(cls, text):
+    def solve(
+        cls,
+        text
+    ):
 
         t = text.lower()
 
@@ -1245,9 +1300,9 @@ class GeneralKnowledgeEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # STUDY
-# ============================================================
+# =========================================================
 
 class StudyEngine:
 
@@ -1270,8 +1325,9 @@ class StudyEngine:
         if "how to study" in t:
 
             return (
-                "Start with the concept, make short notes, "
-                "practice questions, and revise using active recall."
+                "Start with the concept, "
+                "make short notes, practice questions, "
+                "and revise using active recall."
             )
 
         if "photosynthesis" in t:
@@ -1281,9 +1337,9 @@ class StudyEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # HOMEWORK
-# ============================================================
+# =========================================================
 
 class HomeworkEngine:
 
@@ -1302,9 +1358,9 @@ class HomeworkEngine:
         return None
 
 
-# ============================================================
+# =========================================================
 # QUIZ
-# ============================================================
+# =========================================================
 
 class QuizEngine:
 
@@ -1333,9 +1389,9 @@ class QuizEngine:
         )
 
 
-# ============================================================
+# =========================================================
 # FLASHCARD
-# ============================================================
+# =========================================================
 
 class FlashcardEngine:
 
@@ -1364,9 +1420,9 @@ class FlashcardEngine:
         )
 
 
-# ============================================================
+# =========================================================
 # LANGUAGE
-# ============================================================
+# =========================================================
 
 class LanguageEngine:
 
@@ -1387,22 +1443,23 @@ class LanguageEngine:
                 "Translation mode: "
                 + phrase
                 + "\n"
-                "For high-quality translation, provide the target language too."
+                "For high-quality translation, "
+                "provide the target language too."
             )
 
         if "meaning of" in t:
 
             return (
-                "Send the word and I can explain its meaning "
-                "in simple language."
+                "Send the word and I can explain "
+                "its meaning in simple language."
             )
 
         return None
 
 
-# ============================================================
+# =========================================================
 # REASONING
-# ============================================================
+# =========================================================
 
 class ReasoningEngine:
 
@@ -1414,22 +1471,24 @@ class ReasoningEngine:
         if "why is sky blue" in t:
 
             return (
-                "The sky appears blue mainly because Earth's atmosphere "
-                "scatters shorter blue wavelengths of sunlight more strongly."
+                "The sky appears blue mainly because "
+                "Earth's atmosphere scatters shorter "
+                "blue wavelengths of sunlight more strongly."
             )
 
         if "riddle" in t:
 
             return (
-                "Send me the riddle and I will try to solve it."
+                "Send me the riddle and "
+                "I will try to solve it."
             )
 
         return None
 
 
-# ============================================================
+# =========================================================
 # CODING
-# ============================================================
+# =========================================================
 
 class CodingEngine:
 
@@ -1487,14 +1546,15 @@ class CodingEngine:
 
         return (
             "Coding mode active. "
-            "Tell me the programming language and what you want to build, "
-            "debug, explain, or convert."
+            "Tell me the programming language "
+            "and what you want to build, debug, "
+            "explain, or convert."
         )
 
 
-# ============================================================
+# =========================================================
 # CREATIVE
-# ============================================================
+# =========================================================
 
 class CreativeEngine:
 
@@ -1507,38 +1567,42 @@ class CreativeEngine:
 
             return (
                 "Creative story idea:\n"
-                "A young creator discovers an offline AI assistant "
-                "that learns from everyday conversations and helps "
-                "turn small ideas into real projects."
+                "A young creator discovers an offline "
+                "AI assistant that learns from everyday "
+                "conversations and helps turn small ideas "
+                "into real projects."
             )
 
         if "caption" in t:
 
             return (
                 "Caption idea:\n"
-                "Dream big. Build quietly. Let the results speak."
+                "Dream big. Build quietly. "
+                "Let the results speak."
             )
 
         if "script" in t:
 
             return (
                 "Script structure:\n"
-                "Hook -> Problem -> Journey -> Result -> Call to action."
+                "Hook -> Problem -> Journey -> "
+                "Result -> Call to action."
             )
 
         if "idea" in t:
 
             return (
-                "Content idea: Show the journey of building Layla "
-                "from a simple Python project into an Android AI app."
+                "Content idea: Show the journey of "
+                "building Layla from a simple Python "
+                "project into an Android AI app."
             )
 
         return None
 
 
-# ============================================================
+# =========================================================
 # GAMING
-# ============================================================
+# =========================================================
 
 class GamingEngine:
 
@@ -1550,8 +1614,9 @@ class GamingEngine:
         if "free fire" in t:
 
             return (
-                "For Free Fire content, I can help with tournament ideas, "
-                "captions, practice plans, video concepts and scripts."
+                "For Free Fire content, I can help "
+                "with tournament ideas, captions, "
+                "practice plans, video concepts and scripts."
             )
 
         if (
@@ -1561,16 +1626,17 @@ class GamingEngine:
         ):
 
             return (
-                "Gaming mode active. Tell me the game or the type "
+                "Gaming mode active. "
+                "Tell me the game or the type "
                 "of gaming content you want."
             )
 
         return None
 
 
-# ============================================================
-# VISION / MEDIA
-# ============================================================
+# =========================================================
+# MEDIA
+# =========================================================
 
 class VisionMediaEngine:
 
@@ -1591,16 +1657,17 @@ class VisionMediaEngine:
         ):
 
             return (
-                "Media mode is ready. Use the Attach button to select "
+                "Media mode is ready. "
+                "Use the Attach button to select "
                 "a Photo, Video, or File."
             )
 
         return None
 
 
-# ============================================================
+# =========================================================
 # ATTACHMENT POPUP
-# ============================================================
+# =========================================================
 
 class AttachmentPopup(Popup):
 
@@ -1667,16 +1734,21 @@ class AttachmentPopup(Popup):
 
         self.content = layout
 
-    def select(self, kind):
+    def select(
+        self,
+        kind
+    ):
 
         self.dismiss()
 
-        self.callback(kind)
+        self.callback(
+            kind
+        )
 
 
-# ============================================================
+# =========================================================
 # CHAT BUBBLE
-# ============================================================
+# =========================================================
 
 class Bubble(BoxLayout):
 
@@ -1701,12 +1773,7 @@ class Bubble(BoxLayout):
 
         label = Label(
             text=text,
-            color=(
-                1,
-                1,
-                1,
-                1
-            ),
+            color=(1, 1, 1, 1),
             font_size=dp(15),
             halign="left",
             valign="middle",
@@ -1772,15 +1839,18 @@ class Bubble(BoxLayout):
             size=self.update_rect
         )
 
-    def update_rect(self, *args):
+    def update_rect(
+        self,
+        *args
+    ):
 
         self.rect.pos = self.pos
         self.rect.size = self.size
 
 
-# ============================================================
+# =========================================================
 # LAYLA
-# ============================================================
+# =========================================================
 
 class Layla(BoxLayout):
 
@@ -1800,6 +1870,8 @@ class Layla(BoxLayout):
 
         self._voice_bound = False
 
+        self.last_attachment = None
+
         Window.clearcolor = (
             0.04,
             0.04,
@@ -1807,9 +1879,9 @@ class Layla(BoxLayout):
             1
         )
 
-        # ====================================================
+        # -------------------------
         # HEADER
-        # ====================================================
+        # -------------------------
 
         header = BoxLayout(
             size_hint_y=None,
@@ -1855,9 +1927,9 @@ class Layla(BoxLayout):
             header
         )
 
-        # ====================================================
+        # -------------------------
         # CHAT
-        # ====================================================
+        # -------------------------
 
         self.scroll = ScrollView(
             do_scroll_x=False,
@@ -1875,7 +1947,8 @@ class Layla(BoxLayout):
         )
 
         self.chat.bind(
-            minimum_height=self.chat.setter(
+            minimum_height=
+            self.chat.setter(
                 "height"
             )
         )
@@ -1888,9 +1961,9 @@ class Layla(BoxLayout):
             self.scroll
         )
 
-        # ====================================================
-        # INPUT
-        # ====================================================
+        # -------------------------
+        # BOTTOM
+        # -------------------------
 
         bottom = BoxLayout(
             size_hint_y=None,
@@ -1949,19 +2022,23 @@ class Layla(BoxLayout):
         )
 
         attach.bind(
-            on_release=self.open_attachment_menu
+            on_release=
+            self.open_attachment_menu
         )
 
         send.bind(
-            on_release=self.send_message
+            on_release=
+            self.send_message
         )
 
         self.input_box.bind(
-            on_text_validate=self.send_message
+            on_text_validate=
+            self.send_message
         )
 
         mic.bind(
-            on_release=self.voice_input
+            on_release=
+            self.voice_input
         )
 
         bottom.add_widget(
@@ -1985,14 +2062,18 @@ class Layla(BoxLayout):
         )
 
         self.add_bot_message(
-            "Hello! Main Layla hoon. Mujhe kuch bhi pucho."
+            "Hello! Main Layla hoon. "
+            "Mujhe kuch bhi pucho."
         )
 
-    # ========================================================
-    # ADD USER MESSAGE
-    # ========================================================
+    # =====================================================
+    # CHAT
+    # =====================================================
 
-    def add_user_message(self, text):
+    def add_user_message(
+        self,
+        text
+    ):
 
         bubble = Bubble(
             text,
@@ -2005,11 +2086,10 @@ class Layla(BoxLayout):
 
         self.scroll_to_bottom()
 
-    # ========================================================
-    # ADD BOT MESSAGE
-    # ========================================================
-
-    def add_bot_message(self, text):
+    def add_bot_message(
+        self,
+        text
+    ):
 
         bubble = Bubble(
             text,
@@ -2022,11 +2102,9 @@ class Layla(BoxLayout):
 
         self.scroll_to_bottom()
 
-    # ========================================================
-    # SCROLL
-    # ========================================================
-
-    def scroll_to_bottom(self):
+    def scroll_to_bottom(
+        self
+    ):
 
         from kivy.clock import Clock
 
@@ -2040,11 +2118,14 @@ class Layla(BoxLayout):
             0.1
         )
 
-    # ========================================================
-    # SEND MESSAGE
-    # ========================================================
+    # =====================================================
+    # SEND
+    # =====================================================
 
-    def send_message(self, *args):
+    def send_message(
+        self,
+        *args
+    ):
 
         text = self.input_box.text.strip()
 
@@ -2066,30 +2147,34 @@ class Layla(BoxLayout):
             answer
         )
 
-    # ========================================================
-    # PROCESS MESSAGE
-    # ========================================================
+    # =====================================================
+    # AI ROUTER
+    # =====================================================
 
-    def process_message(self, text):
+    def process_message(
+        self,
+        text
+    ):
 
         # Automatic learning
         self.brain.learn(
             text
         )
 
-        # Normalize
-        normalized = TextNormalizer.normalize(
-            text
+        normalized = (
+            TextNormalizer.normalize(
+                text
+            )
         )
 
         # Memory
-        memory_answer = self.brain.answer(
+        answer = self.brain.answer(
             normalized
         )
 
-        if memory_answer:
+        if answer:
 
-            return memory_answer
+            return answer
 
         # Conversation
         answer = ConversationEngine.solve(
@@ -2208,7 +2293,7 @@ class Layla(BoxLayout):
 
             return answer
 
-        # Flashcards
+        # Flashcard
         answer = FlashcardEngine.solve(
             normalized
         )
@@ -2271,7 +2356,7 @@ class Layla(BoxLayout):
 
             return answer
 
-        # Spell correction
+        # Spell correction retry
         corrected = SpellCorrector.correct(
             normalized
         )
@@ -2307,11 +2392,14 @@ class Layla(BoxLayout):
             "Thoda aur detail mein batao ki tum kya chahte ho."
         )
 
-    # ========================================================
+    # =====================================================
     # ATTACHMENT MENU
-    # ========================================================
+    # =====================================================
 
-    def open_attachment_menu(self, *args):
+    def open_attachment_menu(
+        self,
+        *args
+    ):
 
         popup = AttachmentPopup(
             self.choose_attachment
@@ -2319,17 +2407,20 @@ class Layla(BoxLayout):
 
         popup.open()
 
-    # ========================================================
+    # =====================================================
     # CHOOSE ATTACHMENT
-    # ========================================================
+    # =====================================================
 
-    def choose_attachment(self, kind):
+    def choose_attachment(
+        self,
+        kind
+    ):
 
         if filechooser is None:
 
             self.add_bot_message(
                 "File picker available nahi hai. "
-                "Build mein plyer dependency check karni hogi."
+                "Build mein plyer dependency check karo."
             )
 
             return
@@ -2356,6 +2447,12 @@ class Layla(BoxLayout):
                     "*.mov"
                 ]
 
+            else:
+
+                filters = [
+                    "*.*"
+                ]
+
             selected = filechooser.open_file(
                 multiple=False,
                 filters=filters
@@ -2375,9 +2472,9 @@ class Layla(BoxLayout):
                 + str(e)
             )
 
-    # ========================================================
+    # =====================================================
     # ATTACHMENT SELECTED
-    # ========================================================
+    # =====================================================
 
     def attachment_selected(
         self,
@@ -2389,6 +2486,8 @@ class Layla(BoxLayout):
             path
         )
 
+        self.last_attachment = path
+
         if kind == "photo":
 
             self.add_user_message(
@@ -2398,8 +2497,12 @@ class Layla(BoxLayout):
 
             self.add_bot_message(
                 "Photo select ho gayi. "
-                "Actual image understanding ke liye "
-                "vision/OCR model connect karna hoga."
+                "Processing start ho rahi hai..."
+            )
+
+            self.analyze_attachment(
+                kind,
+                path
             )
 
         elif kind == "video":
@@ -2411,8 +2514,12 @@ class Layla(BoxLayout):
 
             self.add_bot_message(
                 "Video select ho gaya. "
-                "Actual video analysis ke liye "
-                "media/vision model connect karna hoga."
+                "Processing start ho rahi hai..."
+            )
+
+            self.analyze_attachment(
+                kind,
+                path
             )
 
         else:
@@ -2422,21 +2529,39 @@ class Layla(BoxLayout):
                 + filename
             )
 
-            self.process_file(
+            self.add_bot_message(
+                "File select ho gayi. "
+                "Reading file..."
+            )
+
+            self.analyze_attachment(
+                kind,
                 path
             )
 
-    # ========================================================
-    # BASIC FILE PROCESSING
-    # ========================================================
+    # =====================================================
+    # ANALYZE ATTACHMENT
+    # =====================================================
 
-    def process_file(self, path):
+    def analyze_attachment(
+        self,
+        kind,
+        path
+    ):
 
         try:
+
+            filename = os.path.basename(
+                path
+            )
 
             extension = os.path.splitext(
                 path
             )[1].lower()
+
+            # ---------------------------------------------
+            # TEXT / CODE / DATA
+            # ---------------------------------------------
 
             text_extensions = {
 
@@ -2458,63 +2583,301 @@ class Layla(BoxLayout):
                 ".yml"
             }
 
-            if extension not in text_extensions:
+            if extension in text_extensions:
+
+                with open(
+                    path,
+                    "r",
+                    encoding="utf-8",
+                    errors="ignore"
+                ) as f:
+
+                    content = f.read()
+
+                if not content.strip():
+
+                    self.add_bot_message(
+                        "File empty hai."
+                    )
+
+                    return
+
+                result = (
+                    self.process_file_content(
+                        filename,
+                        content
+                    )
+                )
 
                 self.add_bot_message(
-                    "File select ho gayi, lekin is file type "
-                    + extension
-                    + " ko abhi directly read nahi kar sakti."
+                    result
                 )
 
                 return
 
-            with open(
-                path,
-                "r",
-                encoding="utf-8",
-                errors="ignore"
-            ) as f:
+            # ---------------------------------------------
+            # PHOTO
+            # ---------------------------------------------
 
-                content = f.read()
+            if kind == "photo":
 
-            if not content.strip():
+                try:
 
-                self.add_bot_message(
-                    "File empty hai."
-                )
+                    from PIL import Image
+
+                    image = Image.open(
+                        path
+                    )
+
+                    width, height = (
+                        image.size
+                    )
+
+                    mode = image.mode
+
+                    format_name = (
+                        image.format
+                    )
+
+                    result = (
+                        "Photo processed successfully.\n\n"
+                        "File: "
+                        + filename
+                        + "\n"
+                        "Format: "
+                        + str(format_name)
+                        + "\n"
+                        "Size: "
+                        + str(width)
+                        + " × "
+                        + str(height)
+                        + "\n"
+                        "Mode: "
+                        + str(mode)
+                        + "\n\n"
+                        "Photo file successfully read ho gayi. "
+                        "Actual objects/text ko understand karne "
+                        "ke liye OCR/vision model connect karna hoga."
+                    )
+
+                    self.add_bot_message(
+                        result
+                    )
+
+                except Exception as e:
+
+                    self.add_bot_message(
+                        "Photo read nahi ho payi: "
+                        + str(e)
+                    )
 
                 return
 
-            max_chars = 6000
+            # ---------------------------------------------
+            # VIDEO
+            # ---------------------------------------------
 
-            preview = content[
-                :max_chars
-            ]
+            if kind == "video":
 
-            if len(content) > max_chars:
+                try:
 
-                preview += (
-                    "\n\n[File ka remaining content "
-                    "preview limit ke karan nahi dikhaya gaya.]"
+                    size = os.path.getsize(
+                        path
+                    )
+
+                    size_mb = round(
+                        size / (
+                            1024 * 1024
+                        ),
+                        2
+                    )
+
+                    result = (
+                        "Video file processed.\n\n"
+                        "File: "
+                        + filename
+                        + "\n"
+                        "Size: "
+                        + str(size_mb)
+                        + " MB\n\n"
+                        "Video file successfully select/read ho gaya. "
+                        "Actual video scenes ko understand karne "
+                        "ke liye video/vision model required hai."
+                    )
+
+                    self.add_bot_message(
+                        result
+                    )
+
+                except Exception as e:
+
+                    self.add_bot_message(
+                        "Video process nahi ho paya: "
+                        + str(e)
+                    )
+
+                return
+
+            # ---------------------------------------------
+            # UNKNOWN FILE
+            # ---------------------------------------------
+
+            try:
+
+                size = os.path.getsize(
+                    path
                 )
 
-            self.add_bot_message(
-                "File read ho gayi.\n\n"
-                + preview
-            )
+                size_mb = round(
+                    size / (
+                        1024 * 1024
+                    ),
+                    2
+                )
+
+                self.add_bot_message(
+                    "File select ho gayi.\n\n"
+                    "Name: "
+                    + filename
+                    + "\n"
+                    "Size: "
+                    + str(size_mb)
+                    + " MB\n\n"
+                    "Is file type ko abhi directly "
+                    "read nahi kar sakti."
+                )
+
+            except Exception:
+
+                self.add_bot_message(
+                    "File select ho gayi, "
+                    "lekin process nahi ho payi."
+                )
 
         except Exception as e:
 
             self.add_bot_message(
-                "File process nahi ho payi: "
+                "Attachment processing error: "
                 + str(e)
             )
 
-    # ========================================================
-    # VOICE INPUT
-    # ========================================================
+    # =====================================================
+    # PROCESS TEXT FILE
+    # =====================================================
 
-    def voice_input(self, *args):
+    def process_file_content(
+        self,
+        filename,
+        content
+    ):
+
+        max_chars = 12000
+
+        text = content[
+            :max_chars
+        ]
+
+        extension = os.path.splitext(
+            filename
+        )[1].lower()
+
+        # ---------------------------------------------
+        # JSON
+        # ---------------------------------------------
+
+        if extension == ".json":
+
+            try:
+
+                data = json.loads(
+                    content
+                )
+
+                formatted = json.dumps(
+                    data,
+                    ensure_ascii=False,
+                    indent=2
+                )
+
+                return (
+                    "JSON file processed successfully.\n\n"
+                    "File: "
+                    + filename
+                    + "\n"
+                    "Top-level type: "
+                    + type(data).__name__
+                    + "\n\n"
+                    "Content:\n\n"
+                    + formatted[
+                        :max_chars
+                    ]
+                )
+
+            except Exception:
+
+                pass
+
+        # ---------------------------------------------
+        # CODE
+        # ---------------------------------------------
+
+        code_extensions = {
+
+            ".py",
+            ".js",
+            ".java",
+            ".kt",
+            ".cpp",
+            ".c",
+            ".h",
+            ".html",
+            ".css"
+        }
+
+        if extension in code_extensions:
+
+            return (
+                "Code file processed successfully.\n\n"
+                "File: "
+                + filename
+                + "\n"
+                "Type: "
+                + extension
+                + "\n\n"
+                "Content:\n\n"
+                + text
+            )
+
+        # ---------------------------------------------
+        # NORMAL TEXT
+        # ---------------------------------------------
+
+        result = (
+            "File processed successfully.\n\n"
+            "File: "
+            + filename
+            + "\n\n"
+            "Content:\n\n"
+            + text
+        )
+
+        if len(content) > max_chars:
+
+            result += (
+                "\n\n[Remaining content "
+                "preview limit ke bahar hai.]"
+            )
+
+        return result
+
+    # =====================================================
+    # VOICE INPUT
+    # =====================================================
+
+    def voice_input(
+        self,
+        *args
+    ):
 
         try:
 
@@ -2524,7 +2887,6 @@ class Layla(BoxLayout):
 
             self.voice_request_code = 1001
 
-            # Activity result callback sirf ek baar bind karo
             if not getattr(
                 self,
                 "_voice_bound",
@@ -2577,13 +2939,13 @@ class Layla(BoxLayout):
         except Exception as e:
 
             self.add_bot_message(
-                "Voice input start nahi ho paya: "
+                "Voice start error: "
                 + str(e)
             )
 
-    # ========================================================
+    # =====================================================
     # VOICE RESULT
-    # ========================================================
+    # =====================================================
 
     def on_voice_result(
         self,
@@ -2618,8 +2980,10 @@ class Layla(BoxLayout):
                 "android.speech.RecognizerIntent"
             )
 
-            results = intent.getStringArrayListExtra(
-                RecognizerIntent.EXTRA_RESULTS
+            results = (
+                intent.getStringArrayListExtra(
+                    RecognizerIntent.EXTRA_RESULTS
+                )
             )
 
             if (
@@ -2634,21 +2998,24 @@ class Layla(BoxLayout):
 
                 if text:
 
+                    # Voice result input box mein
                     self.input_box.text = text
 
-                    self.input_box.focus = True
+                    # IMPORTANT:
+                    # Automatically send
+                    self.send_message()
 
         except Exception as e:
 
             self.add_bot_message(
-                "Voice result read nahi ho paya: "
+                "Voice result error: "
                 + str(e)
             )
 
 
-# ============================================================
+# =========================================================
 # APP
-# ============================================================
+# =========================================================
 
 class LaylaApp(App):
 
@@ -2659,9 +3026,9 @@ class LaylaApp(App):
         return Layla()
 
 
-# ============================================================
-# RUN
-# ============================================================
+# =========================================================
+# START
+# =========================================================
 
 if __name__ == "__main__":
 
