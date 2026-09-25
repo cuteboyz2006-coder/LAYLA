@@ -3,6 +3,7 @@ from Brain.tokenizer import Tokenizer
 from Brain.embeddings import TokenEmbeddings
 from Brain.decoder import TransformerDecoder
 from Brain.loss import CrossEntropyLoss
+from Brain.backprop import OutputBackprop
 
 
 # -------------------------
@@ -122,6 +123,32 @@ loss = loss_function.loss(
 gradient = loss_function.gradient(
     logits[-1],
     target_id
+)
+# -------------------------
+# Output backpropagation
+# -------------------------
+
+backprop = OutputBackprop()
+
+gradients = backprop.calculate_gradients(
+    decoder_output[-1],
+    decoder.output_weights,
+    gradient
+)
+
+print(
+    "Output weight gradient rows:",
+    len(gradients["weights"])
+)
+
+print(
+    "Output weight gradient columns:",
+    len(gradients["weights"][0])
+)
+
+print(
+    "Bias gradient size:",
+    len(gradients["bias"])
 )
 
 
