@@ -2,6 +2,7 @@ from Brain.data import TextData
 from Brain.tokenizer import Tokenizer
 from Brain.embeddings import TokenEmbeddings
 from Brain.decoder import TransformerDecoder
+from Brain.loss import CrossEntropyLoss
 
 
 # -------------------------
@@ -40,7 +41,7 @@ embedding = TokenEmbeddings(
 
 
 # -------------------------
-# Transformer Decoder
+# Decoder
 # -------------------------
 
 decoder = TransformerDecoder(
@@ -50,6 +51,13 @@ decoder = TransformerDecoder(
     ),
     hidden_size=32
 )
+
+
+# -------------------------
+# Loss
+# -------------------------
+
+loss_function = CrossEntropyLoss()
 
 
 # -------------------------
@@ -73,7 +81,7 @@ vectors = embedding.encode(
 
 
 # -------------------------
-# Decoder forward pass
+# Decoder
 # -------------------------
 
 decoder_output = decoder.forward(
@@ -82,7 +90,7 @@ decoder_output = decoder.forward(
 
 
 # -------------------------
-# Vocabulary logits
+# Logits
 # -------------------------
 
 logits = decoder.logits(
@@ -91,50 +99,62 @@ logits = decoder.logits(
 
 
 # -------------------------
-# Next-token prediction
+# Target
 # -------------------------
 
-next_token_id = decoder.predict_next_token(
-    logits
+target_id = token_ids[-1]
+
+
+# -------------------------
+# Loss
+# -------------------------
+
+loss = loss_function.loss(
+    logits[-1],
+    target_id
 )
 
+
+# -------------------------
+# Gradient
+# -------------------------
+
+gradient = loss_function.gradient(
+    logits[-1],
+    target_id
+)
+
+
+# -------------------------
+# Test output
+# -------------------------
 
 print("Input:", text)
 
 print(
-    "Token IDs:",
-    token_ids
+    "Target token ID:",
+    target_id
 )
 
 print(
-    "Embedding size:",
-    len(vectors[0])
-)
-
-print(
-    "Decoder tokens:",
-    len(decoder_output)
-)
-
-print(
-    "Vocabulary size:",
-    len(tokenizer.token_to_id)
-)
-
-print(
-    "Logits size:",
-    len(logits[-1])
-)
-
-print(
-    "Predicted token ID:",
-    next_token_id
-)
-
-print(
-    "Predicted token:",
+    "Target token:",
     tokenizer.id_to_token.get(
-        next_token_id,
+        target_id,
         "<UNK>"
     )
+)
+
+print(
+    "Loss:",
+    loss
+)
+
+print(
+    "Gradient size:",
+    len(gradient)
+)
+
+print(
+    "Gradient sample:",
+    gradient[:5]
 )
