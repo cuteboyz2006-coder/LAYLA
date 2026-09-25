@@ -227,8 +227,9 @@ trainer = Trainer(
     decoder=decoder,
     loss_function=loss_function,
     learning_rate=0.01
-)# -------------------------
-# Training epochs
+)
+# -------------------------
+# Proper next-token training
 # -------------------------
 
 epochs = 10
@@ -236,7 +237,7 @@ epochs = 10
 for epoch in range(epochs):
 
     total_loss = 0.0
-    trained_sequences = 0
+    trained_steps = 0
 
     for sequence in sequences:
 
@@ -246,24 +247,35 @@ for epoch in range(epochs):
         if not input_ids:
             continue
 
-        sequence_vectors = embedding.encode(
-            input_ids
-        )
+        # Train every next-token position
+        for position in range(
+            len(input_ids)
+        ):
 
-        target_id = target_ids[-1]
+            current_input = input_ids[
+                :position + 1
+            ]
 
-        loss = trainer.train_step(
-            sequence_vectors,
-            target_id
-        )
+            target_id = target_ids[
+                position
+            ]
 
-        total_loss += loss
-        trained_sequences += 1
+            sequence_vectors = embedding.encode(
+                current_input
+            )
 
-    if trained_sequences > 0:
+            loss = trainer.train_step(
+                sequence_vectors,
+                target_id
+            )
+
+            total_loss += loss
+            trained_steps += 1
+
+    if trained_steps > 0:
         average_loss = (
             total_loss
-            / trained_sequences
+            / trained_steps
         )
     else:
         average_loss = 0.0
@@ -276,7 +288,6 @@ for epoch in range(epochs):
         "Loss:",
         average_loss
     )
-
 
 # -------------------------
 # Test output
