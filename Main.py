@@ -281,10 +281,10 @@ for epoch in range(epochs):
         )
     else:
         average_loss = 0.0
-    if first_epoch_loss is None:
-    first_epoch_loss = average_loss
+        if first_epoch_loss is None:
+        first_epoch_loss = average_loss
 
-last_epoch_loss = average_loss
+    last_epoch_loss = average_loss
 
     print(
         "Epoch:",
