@@ -1,15 +1,1 @@
-def __init__(
-    self,
-    decoder,
-    loss_function,
-    learning_rate=0.01
-):
-    self.decoder = decoder
-    self.loss_function = loss_function
 
-    self.backprop = OutputBackprop()
-    self.input_backprop = DecoderInputBackprop()
-
-    self.optimizer = SGD(
-        learning_rate=learning_rate
-    )
