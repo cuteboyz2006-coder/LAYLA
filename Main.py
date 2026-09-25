@@ -4,6 +4,7 @@ from Brain.embeddings import TokenEmbeddings
 from Brain.decoder import TransformerDecoder
 from Brain.loss import CrossEntropyLoss
 from Brain.backprop import OutputBackprop
+from Brain.optimizer import SGD
 
 
 # -------------------------
@@ -149,6 +150,33 @@ print(
 print(
     "Bias gradient size:",
     len(gradients["bias"])
+)
+# -------------------------
+# Optimizer
+# -------------------------
+
+optimizer = SGD(
+    learning_rate=0.01
+)
+
+optimizer.update_matrix(
+    decoder.output_weights,
+    gradients["weights"]
+)
+
+optimizer.update_vector(
+    decoder.output_bias,
+    gradients["bias"]
+)
+
+print(
+    "Output weights updated:",
+    True
+)
+
+print(
+    "Output bias updated:",
+    True
 )
 
 
