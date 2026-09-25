@@ -229,9 +229,57 @@ trainer = Trainer(
     learning_rate=0.01
 )
 
-training_loss = trainer.train_step(
-    vectors,
-    target_id
+# -------------------------
+# Train on all sequences
+# -------------------------
+
+total_loss = 0.0
+trained_sequences = 0
+
+for sequence in sequences:
+    input_ids = sequence["input"]
+    target_ids = sequence["target"]
+
+    if not input_ids:
+        continue
+
+    sequence_vectors = embedding.encode(
+        input_ids
+    )
+
+    target_id = target_ids[-1]
+
+    loss = trainer.train_step(
+        sequence_vectors,
+        target_id
+    )
+
+    total_loss += loss
+    trained_sequences += 1
+
+
+# -------------------------
+# Average training loss
+# -------------------------
+
+if trained_sequences > 0:
+    average_loss = (
+        total_loss
+        / trained_sequences
+    )
+else:
+    average_loss = 0.0
+
+
+print(
+    "Trained sequences:",
+    trained_sequences
+)
+
+print(
+    "Average training loss:",
+    average_loss
+)
 )
 
 print(
