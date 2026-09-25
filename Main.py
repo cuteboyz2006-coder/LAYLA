@@ -5,6 +5,7 @@ from Brain.decoder import TransformerDecoder
 from Brain.loss import CrossEntropyLoss
 from Brain.backprop import OutputBackprop
 from Brain.optimizer import SGD
+from Brain.training import Trainer
 
 
 # -------------------------
@@ -204,6 +205,25 @@ print(
 print(
     "Loss after:",
     loss_after
+)
+# -------------------------
+# Training loop test
+# -------------------------
+
+trainer = Trainer(
+    decoder=decoder,
+    loss_function=loss_function,
+    learning_rate=0.01
+)
+
+training_loss = trainer.train_step(
+    vectors,
+    target_id
+)
+
+print(
+    "Training step loss:",
+    training_loss
 )
 
 
