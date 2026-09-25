@@ -285,7 +285,6 @@ for epoch in range(epochs):
         first_epoch_loss = average_loss
 
     last_epoch_loss = average_loss
-
     print(
         "Epoch:",
         epoch + 1,
