@@ -3,8 +3,6 @@ from Brain.tokenizer import Tokenizer
 from Brain.embeddings import TokenEmbeddings
 from Brain.decoder import TransformerDecoder
 from Brain.loss import CrossEntropyLoss
-from Brain.backprop import OutputBackprop
-from Brain.optimizer import SGD
 from Brain.training import Trainer
 
 
@@ -29,6 +27,8 @@ tokenizer = Tokenizer()
 tokenizer.build_vocab(
     data.get_all()
 )
+
+
 # -------------------------
 # Training sequences
 # -------------------------
@@ -57,7 +57,7 @@ embedding = TokenEmbeddings(
 
 
 # -------------------------
-# Decoder
+# Transformer Decoder
 # -------------------------
 
 decoder = TransformerDecoder(
@@ -77,150 +77,7 @@ loss_function = CrossEntropyLoss()
 
 
 # -------------------------
-# Input
-# -------------------------
-
-text = "Hello Layla"
-
-token_ids = tokenizer.encode(
-    text
-)
-
-
-# -------------------------
-# Embedding
-# -------------------------
-
-vectors = embedding.encode(
-    token_ids
-)
-
-
-# -------------------------
-# Decoder
-# -------------------------
-
-decoder_output = decoder.forward(
-    vectors
-)
-
-
-# -------------------------
-# Logits
-# -------------------------
-
-logits = decoder.logits(
-    decoder_output
-)
-
-
-# -------------------------
-# Target
-# -------------------------
-
-target_id = token_ids[-1]
-
-
-# -------------------------
-# Loss
-# -------------------------
-
-loss = loss_function.loss(
-    logits[-1],
-    target_id
-)
-
-
-# -------------------------
-# Gradient
-# -------------------------
-
-gradient = loss_function.gradient(
-    logits[-1],
-    target_id
-)
-# -------------------------
-# Output backpropagation
-# -------------------------
-
-backprop = OutputBackprop()
-
-gradients = backprop.calculate_gradients(
-    decoder_output[-1],
-    decoder.output_weights,
-    gradient
-)
-
-print(
-    "Output weight gradient rows:",
-    len(gradients["weights"])
-)
-
-print(
-    "Output weight gradient columns:",
-    len(gradients["weights"][0])
-)
-
-print(
-    "Bias gradient size:",
-    len(gradients["bias"])
-)
-loss_before = loss
-# -------------------------
-# Optimizer
-# -------------------------
-
-optimizer = SGD(
-    learning_rate=0.01
-)
-
-optimizer.update_matrix(
-    decoder.output_weights,
-    gradients["weights"]
-)
-
-optimizer.update_vector(
-    decoder.output_bias,
-    gradients["bias"]
-)
-
-print(
-    "Output weights updated:",
-    True
-)
-
-print(
-    "Output bias updated:",
-    True
-)
-# -------------------------
-# Check learning
-# -------------------------
-
-new_decoder_output = decoder.forward(
-    vectors
-)
-
-new_logits = decoder.logits(
-    new_decoder_output
-)
-
-loss_after = loss_function.loss(
-    new_logits[-1],
-    target_id
-)
-
-print(
-    "Loss before:",
-    loss_before
-)
-
-print(
-    "Loss after:",
-    loss_after
-)
-# -------------------------
-# Training loop test
+# Trainer
 # -------------------------
 
 trainer = Trainer(
@@ -228,13 +85,21 @@ trainer = Trainer(
     loss_function=loss_function,
     learning_rate=0.01
 )
+
+
 # -------------------------
-# Proper next-token training
+# Training configuration
 # -------------------------
 
 epochs = 10
+
 first_epoch_loss = None
 last_epoch_loss = None
+
+
+# -------------------------
+# Training
+# -------------------------
 
 for epoch in range(epochs):
 
@@ -274,17 +139,35 @@ for epoch in range(epochs):
             total_loss += loss
             trained_steps += 1
 
+    # -------------------------
+    # Average loss
+    # -------------------------
+
     if trained_steps > 0:
+
         average_loss = (
             total_loss
             / trained_steps
         )
+
     else:
+
         average_loss = 0.0
-        if first_epoch_loss is None:
+
+    # -------------------------
+    # Save first/last loss
+    # -------------------------
+
+    if first_epoch_loss is None:
+
         first_epoch_loss = average_loss
 
     last_epoch_loss = average_loss
+
+    # -------------------------
+    # Epoch output
+    # -------------------------
+
     print(
         "Epoch:",
         epoch + 1,
@@ -293,6 +176,12 @@ for epoch in range(epochs):
         "Loss:",
         average_loss
     )
+
+
+# -------------------------
+# Loss verification
+# -------------------------
+
 print(
     "First epoch loss:",
     first_epoch_loss
@@ -303,36 +192,84 @@ print(
     last_epoch_loss
 )
 
+
+# -------------------------
+# Test input
+# -------------------------
+
+text = "Hello Layla"
+
+token_ids = tokenizer.encode(
+    text
+)
+
+
+# -------------------------
+# Test embedding
+# -------------------------
+
+vectors = embedding.encode(
+    token_ids
+)
+
+
+# -------------------------
+# Test decoder
+# -------------------------
+
+decoder_output = decoder.forward(
+    vectors
+)
+
+
+# -------------------------
+# Test logits
+# -------------------------
+
+logits = decoder.logits(
+    decoder_output
+)
+
+
+# -------------------------
+# Test prediction
+# -------------------------
+
+next_token_id = decoder.predict_next_token(
+    logits
+)
+
+
 # -------------------------
 # Test output
 # -------------------------
 
-print("Input:", text)
-
 print(
-    "Target token ID:",
-    target_id
+    "Input:",
+    text
 )
 
 print(
-    "Target token:",
-    tokenizer.id_to_token.get(
-        target_id,
-        "<UNK>"
+    "Token IDs:",
+    token_ids
+)
+
+print(
+    "Vocabulary size:",
+    len(
+        tokenizer.token_to_id
     )
 )
 
 print(
-    "Loss:",
-    loss
+    "Predicted token ID:",
+    next_token_id
 )
 
 print(
-    "Gradient size:",
-    len(gradient)
-)
-
-print(
-    "Gradient sample:",
-    gradient[:5]
+    "Predicted token:",
+    tokenizer.id_to_token.get(
+        next_token_id,
+        "<UNK>"
+    )
 )
