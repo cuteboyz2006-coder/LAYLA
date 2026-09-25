@@ -15,15 +15,18 @@ tokenizer = Tokenizer()
 tokenizer.build_vocab(data.get_all())
 
 
-text = "Hello Layla"
+sequences = data.make_sequences(
+    tokenizer,
+    sequence_length=8
+)
 
-encoded = tokenizer.encode(text)
-decoded = tokenizer.decode(encoded)
 
+print("Training examples:", len(sequences))
 
-print("Original:", text)
-print("Encoded:", encoded)
-print("Decoded:", decoded)
-
-print("Vocabulary size:", len(tokenizer.token_to_id))
-print("Vocabulary:", tokenizer.token_to_id)
+for example in sequences[:10]:
+    print(
+        "Input:",
+        example["input"],
+        "Target:",
+        example["target"]
+    )
