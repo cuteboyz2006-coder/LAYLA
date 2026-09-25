@@ -1,5 +1,5 @@
-from brain.data import TextData
-from brain.tokenizer import Tokenizer
+from Brain.data import TextData
+from Brain.tokenizer import Tokenizer
 
 
 data = TextData()
