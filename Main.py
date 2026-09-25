@@ -233,6 +233,8 @@ trainer = Trainer(
 # -------------------------
 
 epochs = 10
+first_epoch_loss = None
+last_epoch_loss = None
 
 for epoch in range(epochs):
 
@@ -279,6 +281,10 @@ for epoch in range(epochs):
         )
     else:
         average_loss = 0.0
+    if first_epoch_loss is None:
+    first_epoch_loss = average_loss
+
+last_epoch_loss = average_loss
 
     print(
         "Epoch:",
@@ -288,6 +294,15 @@ for epoch in range(epochs):
         "Loss:",
         average_loss
     )
+print(
+    "First epoch loss:",
+    first_epoch_loss
+)
+
+print(
+    "Last epoch loss:",
+    last_epoch_loss
+)
 
 # -------------------------
 # Test output
