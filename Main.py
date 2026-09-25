@@ -1,7 +1,6 @@
 from Brain.data import TextData
 from Brain.tokenizer import Tokenizer
 
-
 data = TextData()
 
 data.add("hello Layla")
