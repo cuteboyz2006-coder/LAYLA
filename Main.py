@@ -151,6 +151,7 @@ print(
     "Bias gradient size:",
     len(gradients["bias"])
 )
+loss_before = loss
 # -------------------------
 # Optimizer
 # -------------------------
@@ -177,6 +178,32 @@ print(
 print(
     "Output bias updated:",
     True
+)
+# -------------------------
+# Check learning
+# -------------------------
+
+new_decoder_output = decoder.forward(
+    vectors
+)
+
+new_logits = decoder.logits(
+    new_decoder_output
+)
+
+loss_after = loss_function.loss(
+    new_logits[-1],
+    target_id
+)
+
+print(
+    "Loss before:",
+    loss_before
+)
+
+print(
+    "Loss after:",
+    loss_after
 )
 
 
