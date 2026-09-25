@@ -29,6 +29,19 @@ tokenizer = Tokenizer()
 tokenizer.build_vocab(
     data.get_all()
 )
+# -------------------------
+# Training sequences
+# -------------------------
+
+sequences = data.make_sequences(
+    tokenizer,
+    sequence_length=8
+)
+
+print(
+    "Training sequences:",
+    len(sequences)
+)
 
 
 # -------------------------
