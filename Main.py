@@ -280,7 +280,6 @@ print(
     "Average training loss:",
     average_loss
 )
-)
 
 print(
     "Training step loss:",
