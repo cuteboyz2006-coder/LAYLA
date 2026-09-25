@@ -281,11 +281,6 @@ print(
     average_loss
 )
 
-print(
-    "Training step loss:",
-    training_loss
-)
-
 
 # -------------------------
 # Test output
