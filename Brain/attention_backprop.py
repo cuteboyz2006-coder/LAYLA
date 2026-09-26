@@ -4,6 +4,9 @@ import math
 class AttentionBackprop:
 
     def softmax(self, values):
+        if not values:
+            return []
+
         maximum = max(values)
 
         exp_values = [
@@ -30,17 +33,24 @@ class AttentionBackprop:
         if not embeddings:
             return []
 
-        last_position = len(embeddings) - 1
+        if not output_gradient:
+            return []
 
-        query = embeddings[last_position]
+        last_position = len(embeddings) - 1
 
         visible = embeddings[
             :last_position + 1
         ]
 
-        # -------------------------
-        # Attention scores
-        # -------------------------
+        query = embeddings[last_position]
+
+        # --------------------------------
+        # Forward attention scores
+        # --------------------------------
+
+        scale = math.sqrt(
+            embedding_size
+        )
 
         scores = []
 
@@ -56,32 +66,31 @@ class AttentionBackprop:
                     * key[dimension]
                 )
 
-            score /= math.sqrt(
-                embedding_size
-            )
+            score /= scale
 
             scores.append(score)
 
-        # -------------------------
+        # --------------------------------
         # Attention weights
-        # -------------------------
+        # --------------------------------
 
-        weights = self.softmax(
-            scores
-        )
+        weights = self.softmax(scores)
 
-        # -------------------------
-        # Initial gradients
-        # -------------------------
+        # --------------------------------
+        # Gradient containers
+        # --------------------------------
 
         input_gradients = [
             [0.0 for _ in range(embedding_size)]
             for _ in range(len(embeddings))
         ]
 
-        # -------------------------
-        # Value-path gradient
-        # -------------------------
+        # --------------------------------
+        # 1. Gradient through VALUE path
+        #
+        # output =
+        # sum(weight * value)
+        # --------------------------------
 
         for position in range(
             len(visible)
@@ -92,14 +101,15 @@ class AttentionBackprop:
             for dimension in range(
                 embedding_size
             ):
+
                 input_gradients[position][dimension] += (
                     weight
                     * output_gradient[dimension]
                 )
 
-        # -------------------------
-        # Attention-weight gradient
-        # -------------------------
+        # --------------------------------
+        # 2. Gradient wrt attention weights
+        # --------------------------------
 
         weight_gradients = []
 
@@ -107,25 +117,29 @@ class AttentionBackprop:
             len(visible)
         ):
 
-            value = 0.0
+            gradient = 0.0
 
             for dimension in range(
                 embedding_size
             ):
-                value += (
+
+                gradient += (
                     output_gradient[dimension]
                     * visible[position][dimension]
                 )
 
             weight_gradients.append(
-                value
+                gradient
             )
 
-        # -------------------------
-        # Softmax gradient
-        # -------------------------
+        # --------------------------------
+        # 3. Softmax backward
+        # --------------------------------
 
-        score_gradients = []
+        score_gradients = [
+            0.0
+            for _ in range(len(weights))
+        ]
 
         for i in range(
             len(weights)
@@ -138,12 +152,14 @@ class AttentionBackprop:
             ):
 
                 if i == j:
+
                     jacobian = (
                         weights[i]
                         * (1.0 - weights[i])
                     )
 
                 else:
+
                     jacobian = (
                         -weights[i]
                         * weights[j]
@@ -154,55 +170,43 @@ class AttentionBackprop:
                     * jacobian
                 )
 
-            score_gradients.append(
-                gradient
-            )
+            score_gradients[i] = gradient
 
-        # -------------------------
-        # Score gradient
+        # --------------------------------
+        # 4. Gradient through dot-product
         #
-        # score = query · key / sqrt(d)
-        # -------------------------
-
-        scale = math.sqrt(
-            embedding_size
-        )
-
-        # Gradient to query
-        for dimension in range(
-            embedding_size
-        ):
-
-            value = 0.0
-
-            for position in range(
-                len(visible)
-            ):
-                value += (
-                    score_gradients[position]
-                    * visible[position][dimension]
-                    / scale
-                )
-
-            input_gradients[last_position][dimension] += (
-                value
-            )
-
-        # -------------------------
-        # Gradient to keys
-        # -------------------------
+        # score = dot(query, key) / sqrt(d)
+        # --------------------------------
 
         for position in range(
             len(visible)
         ):
 
+            score_gradient = (
+                score_gradients[position]
+            )
+
+            key = visible[position]
+
+            # Gradient wrt key
             for dimension in range(
                 embedding_size
             ):
 
                 input_gradients[position][dimension] += (
-                    score_gradients[position]
+                    score_gradient
                     * query[dimension]
+                    / scale
+                )
+
+            # Gradient wrt query
+            for dimension in range(
+                embedding_size
+            ):
+
+                input_gradients[last_position][dimension] += (
+                    score_gradient
+                    * key[dimension]
                     / scale
                 )
 
