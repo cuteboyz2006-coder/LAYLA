@@ -11,13 +11,75 @@ from Brain.generation import TextGenerator
 # -------------------------
 # Training data
 # -------------------------
-
 data = TextData()
 
-data.add("Hello Layla how are you")
-data.add("Layla is learning from data")
-data.add("I like Python")
-data.add("Layla can learn from data")
+# Greetings
+data.add("Hello Layla")
+data.add("Good morning Layla")
+data.add("Good evening Layla")
+data.add("Nice to meet you")
+data.add("How are you today")
+data.add("I am fine today")
+data.add("I am happy today")
+data.add("Have a nice day")
+
+# Basic conversation
+data.add("My name is Layla")
+data.add("I am an AI assistant")
+data.add("I can help you")
+data.add("I can answer questions")
+data.add("I like learning")
+data.add("I enjoy helping people")
+
+# Common words
+data.add("The sun is bright")
+data.add("The sky is blue")
+data.add("The water is cold")
+data.add("The book is useful")
+data.add("The computer is fast")
+data.add("The phone is useful")
+data.add("The room is clean")
+data.add("The game is fun")
+
+# Learning
+data.add("Python is a programming language")
+data.add("Coding is useful")
+data.add("Learning is important")
+data.add("Practice improves skills")
+data.add("Knowledge comes from learning")
+data.add("Reading helps learning")
+data.add("Examples help learning")
+
+# Questions
+data.add("What is your name")
+data.add("What can you do")
+data.add("What is Python")
+data.add("What is coding")
+data.add("How can you help me")
+data.add("Can you learn from examples")
+
+# Simple abilities
+data.add("I can read text")
+data.add("I can understand words")
+data.add("I can learn from examples")
+data.add("I can generate text")
+data.add("I can solve simple problems")
+data.add("I can remember information")
+
+# Coding vocabulary
+data.add("Python uses variables")
+data.add("Python uses functions")
+data.add("A function performs a task")
+data.add("A variable stores information")
+data.add("Code is written in files")
+data.add("Programs use instructions")
+
+# Layla
+data.add("Layla is learning")
+data.add("Layla can learn")
+data.add("Layla can answer questions")
+data.add("Layla uses a tokenizer")
+
 
 
 # -------------------------
