@@ -532,6 +532,87 @@ print(
     "Prediction from fresh checkpoint model:",
     fresh_prediction
 )
+# =========================================================
+# LEARNING DIAGNOSTIC
+# =========================================================
+
+diagnostic_tests = [
+    ("I like", "python"),
+    ("Layla is", "learning"),
+    ("Layla can", "learn"),
+]
+
+print(
+    "\nLearning diagnostic:"
+)
+
+for prompt, expected_token in diagnostic_tests:
+
+    prompt_ids = tokenizer.encode_prompt(
+        prompt
+    )
+
+    prompt_vectors = embedding.encode(
+        prompt_ids
+    )
+
+    prompt_output = decoder.forward(
+        prompt_vectors
+    )
+
+    prompt_logits = decoder.logits(
+        prompt_output
+    )
+
+    last_logits = prompt_logits[-1]
+
+    expected_id = tokenizer.token_to_id.get(
+        expected_token
+    )
+
+    predicted_id = (
+        decoder.predict_next_token(
+            prompt_logits
+        )
+    )
+
+    expected_score = (
+        last_logits[expected_id]
+        if expected_id is not None
+        else None
+    )
+
+    predicted_score = (
+        last_logits[predicted_id]
+        if predicted_id is not None
+        else None
+    )
+
+    print(
+        "Prompt:",
+        prompt
+    )
+
+    print(
+        "Expected:",
+        expected_token,
+        "Score:",
+        expected_score
+    )
+
+    print(
+        "Predicted:",
+        tokenizer.id_to_token.get(
+            predicted_id,
+            "<UNK>"
+        ),
+        "Score:",
+        predicted_score
+    )
+
+    print(
+        "-------------------------"
+    )
 
 
 # -------------------------
