@@ -91,14 +91,18 @@ for sequence in sequences:
             current_input
         )
 
-        target_text = tokenizer.decode(
-            [target_id]
+        target_token = tokenizer.id_to_token.get(
+            target_id,
+            "<UNK>"
         )
 
         print(
             input_text,
             "->",
-            target_text
+            target_token,
+            "(ID:",
+            target_id,
+            ")"
         )
 
         shown += 1
