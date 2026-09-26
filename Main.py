@@ -83,6 +83,7 @@ loss_function = CrossEntropyLoss()
 trainer = Trainer(
     decoder=decoder,
     loss_function=loss_function,
+    embedding=embedding,
     learning_rate=0.01
 )
 
@@ -133,7 +134,8 @@ for epoch in range(epochs):
 
             loss = trainer.train_step(
                 sequence_vectors,
-                target_id
+                target_id,
+                current_input
             )
 
             total_loss += loss
