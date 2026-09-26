@@ -1,6 +1,7 @@
 from Brain.backprop import OutputBackprop
 from Brain.optimizer import SGD
 from Brain.embedding_backprop import DecoderInputBackprop
+from Brain.decoder_backprop import DecoderBackprop
 
 
 class Trainer:
@@ -15,6 +16,7 @@ class Trainer:
 
         self.backprop = OutputBackprop()
         self.input_backprop = DecoderInputBackprop()
+        self.decoder_backprop = DecoderBackprop()
 
         self.optimizer = SGD(
             learning_rate=learning_rate
@@ -47,13 +49,25 @@ class Trainer:
         )
 
         # -------------------------
-        # Gradient
+        # Output gradient
         # -------------------------
 
         output_gradient = (
             self.loss_function.gradient(
                 logits[-1],
                 target_id
+            )
+        )
+
+        # -------------------------
+        # Output layer gradients
+        # -------------------------
+
+        gradients = (
+            self.backprop.calculate_gradients(
+                decoder_output[-1],
+                self.decoder.output_weights,
+                output_gradient
             )
         )
 
@@ -69,19 +83,17 @@ class Trainer:
         )
 
         # -------------------------
-        # Backpropagation
+        # Residual backpropagation
         # -------------------------
 
-        gradients = (
-            self.backprop.calculate_gradients(
-                decoder_output[-1],
-                self.decoder.output_weights,
-                output_gradient
+        attention_gradient = (
+            self.decoder_backprop.residual_gradient(
+                decoder_input_gradient
             )
         )
 
         # -------------------------
-        # Weight update
+        # Update output weights
         # -------------------------
 
         self.optimizer.update_matrix(
@@ -89,18 +101,27 @@ class Trainer:
             gradients["weights"]
         )
 
+        # -------------------------
+        # Update output bias
+        # -------------------------
+
         self.optimizer.update_vector(
             self.decoder.output_bias,
             gradients["bias"]
         )
 
         # -------------------------
-        # Gradient test
+        # Gradient verification
         # -------------------------
 
         print(
             "Decoder input gradient size:",
             len(decoder_input_gradient)
+        )
+
+        print(
+            "Attention gradient size:",
+            len(attention_gradient)
         )
 
         return loss
