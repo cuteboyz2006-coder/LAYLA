@@ -26,10 +26,14 @@ class Tokenizer:
     def encode(self, text):
         tokens = text.lower().split()
 
-        ids = [self.token_to_id.get(token, 1) for token in tokens]
+        ids = [
+            self.token_to_id.get(token, 1)
+            for token in tokens
+        ]
 
         return [2] + ids + [3]
-            def encode_prompt(self, text):
+
+    def encode_prompt(self, text):
         tokens = text.lower().split()
 
         ids = [
@@ -43,9 +47,16 @@ class Tokenizer:
         tokens = []
 
         for token_id in ids:
-            token = self.id_to_token.get(token_id, "<UNK>")
+            token = self.id_to_token.get(
+                token_id,
+                "<UNK>"
+            )
 
-            if token not in ("<PAD>", "<BOS>", "<EOS>"):
+            if token not in (
+                "<PAD>",
+                "<BOS>",
+                "<EOS>"
+            ):
                 tokens.append(token)
 
         return " ".join(tokens)
