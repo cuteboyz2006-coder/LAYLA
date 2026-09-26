@@ -57,6 +57,16 @@ embedding = TokenEmbeddings(
 
 
 # -------------------------
+# Save embedding before training
+# -------------------------
+
+embedding_before = [
+    value
+    for value in embedding.weights[4]
+]
+
+
+# -------------------------
 # Transformer Decoder
 # -------------------------
 
@@ -115,7 +125,6 @@ for epoch in range(epochs):
         if not input_ids:
             continue
 
-        # Train every next-token position
         for position in range(
             len(input_ids)
         ):
@@ -178,6 +187,42 @@ for epoch in range(epochs):
         "Loss:",
         average_loss
     )
+
+
+# -------------------------
+# Embedding after training
+# -------------------------
+
+embedding_after = [
+    value
+    for value in embedding.weights[4]
+]
+
+
+# -------------------------
+# Learning verification
+# -------------------------
+
+embedding_changed = (
+    embedding_before
+    != embedding_after
+)
+
+
+print(
+    "Embedding before training:",
+    embedding_before
+)
+
+print(
+    "Embedding after training:",
+    embedding_after
+)
+
+print(
+    "Embedding changed:",
+    embedding_changed
+)
 
 
 # -------------------------
