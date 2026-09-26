@@ -1,7 +1,11 @@
 from Brain.backprop import OutputBackprop
 from Brain.optimizer import SGD
-from Brain.embedding_backprop import DecoderInputBackprop
+from Brain.embedding_backprop import (
+    DecoderInputBackprop,
+    EmbeddingBackprop
+)
 from Brain.decoder_backprop import DecoderBackprop
+from Brain.attention_backprop import AttentionBackprop
 
 
 class Trainer:
@@ -9,14 +13,30 @@ class Trainer:
         self,
         decoder,
         loss_function,
+        embedding,
         learning_rate=0.01
     ):
         self.decoder = decoder
         self.loss_function = loss_function
+        self.embedding = embedding
 
         self.backprop = OutputBackprop()
-        self.input_backprop = DecoderInputBackprop()
-        self.decoder_backprop = DecoderBackprop()
+
+        self.input_backprop = (
+            DecoderInputBackprop()
+        )
+
+        self.embedding_backprop = (
+            EmbeddingBackprop()
+        )
+
+        self.decoder_backprop = (
+            DecoderBackprop()
+        )
+
+        self.attention_backprop = (
+            AttentionBackprop()
+        )
 
         self.optimizer = SGD(
             learning_rate=learning_rate
@@ -25,7 +45,8 @@ class Trainer:
     def train_step(
         self,
         vectors,
-        target_id
+        target_id,
+        token_ids
     ):
         # -------------------------
         # Forward pass
@@ -83,7 +104,7 @@ class Trainer:
         )
 
         # -------------------------
-        # Current attention vector
+        # Attention output
         # -------------------------
 
         attention_output = (
@@ -92,10 +113,12 @@ class Trainer:
             )
         )
 
-        attention_vector = attention_output[-1]
+        attention_vector = (
+            attention_output[-1]
+        )
 
         # -------------------------
-        # Feed-forward gradients
+        # Feed-forward backprop
         # -------------------------
 
         feed_forward_gradients = (
@@ -103,6 +126,43 @@ class Trainer:
                 attention_vector=attention_vector,
                 decoder_gradient=decoder_input_gradient,
                 decoder=self.decoder
+            )
+        )
+
+        # -------------------------
+        # Residual + feed-forward
+        # gradient to attention
+        # -------------------------
+
+        attention_gradient = [
+            decoder_input_gradient[i]
+            + feed_forward_gradients["input"][i]
+            for i in range(
+                len(decoder_input_gradient)
+            )
+        ]
+
+        # -------------------------
+        # Attention backprop
+        # -------------------------
+
+        embedding_gradients = (
+            self.attention_backprop.calculate_input_gradient(
+                embeddings=vectors,
+                output_gradient=attention_gradient,
+                embedding_size=self.decoder.embedding_size
+            )
+        )
+
+        # -------------------------
+        # Embedding gradients
+        # -------------------------
+
+        embedding_weight_gradients = (
+            self.embedding_backprop.update_embedding_gradient(
+                embedding_weights=self.embedding.weights,
+                token_ids=token_ids,
+                input_gradients=embedding_gradients
             )
         )
 
@@ -161,19 +221,26 @@ class Trainer:
         )
 
         # -------------------------
-        # Gradient verification
+        # Update embeddings
+        # -------------------------
+
+        self.optimizer.update_matrix(
+            self.embedding.weights,
+            embedding_weight_gradients
+        )
+
+        # -------------------------
+        # Verification
         # -------------------------
 
         print(
-            "Decoder input gradient size:",
-            len(decoder_input_gradient)
+            "Embedding gradient positions:",
+            len(embedding_gradients)
         )
 
         print(
-            "Feed-forward input gradient size:",
-            len(
-                feed_forward_gradients["input"]
-            )
+            "Embedding vocabulary size:",
+            len(self.embedding.weights)
         )
 
         return loss
