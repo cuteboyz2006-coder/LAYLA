@@ -162,7 +162,7 @@ trainer = Trainer(
 # Training configuration
 # -------------------------
 
-epochs = 10
+epochs = 100
 
 first_epoch_loss = None
 last_epoch_loss = None
