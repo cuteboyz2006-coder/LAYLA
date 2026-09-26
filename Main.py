@@ -24,6 +24,10 @@ data.add("Layla can learn from data")
 data.add("Layla can learn from examples")
 data.add("Python is a programming language")
 data.add("Learning is useful")
+data.add("Hello Layla how are you")
+data.add("Layla is learning from data")
+data.add("I like Python")
+data.add("Layla can learn from data")
 
 
 # -------------------------
