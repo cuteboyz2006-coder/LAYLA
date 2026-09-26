@@ -15,9 +15,15 @@ from Brain.generation import TextGenerator
 data = TextData()
 
 data.add("Hello Layla")
+data.add("Hello Layla how are you")
 data.add("Layla is learning")
+data.add("Layla is learning from data")
 data.add("I like Python")
+data.add("I like coding")
 data.add("Layla can learn from data")
+data.add("Layla can learn from examples")
+data.add("Python is a programming language")
+data.add("Learning is useful")
 
 
 # -------------------------
