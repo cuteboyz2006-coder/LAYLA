@@ -498,3 +498,34 @@ print(
     "Generated text:",
     generated_text
 )
+# -------------------------
+# Multiple generation tests
+# -------------------------
+
+test_prompts = [
+    "Hello Layla",
+    "Layla is learning",
+    "I like Python",
+    "Layla can learn from data"
+]
+
+for prompt in test_prompts:
+
+    result = generator.generate(
+        text=prompt,
+        max_new_tokens=10
+    )
+
+    print(
+        "Prompt:",
+        prompt
+    )
+
+    print(
+        "Generated:",
+        result
+    )
+
+    print(
+        "-------------------------"
+    )
