@@ -238,6 +238,50 @@ print(
     "Last epoch loss:",
     last_epoch_loss
 )
+# -------------------------
+# Prediction after training
+# -------------------------
+
+test_text = "Hello Layla"
+
+test_token_ids = tokenizer.encode(
+    test_text
+)
+
+test_vectors = embedding.encode(
+    test_token_ids
+)
+
+test_decoder_output = decoder.forward(
+    test_vectors
+)
+
+test_logits = decoder.logits(
+    test_decoder_output
+)
+
+test_prediction_id = (
+    decoder.predict_next_token(
+        test_logits
+    )
+)
+
+test_prediction = (
+    tokenizer.id_to_token.get(
+        test_prediction_id,
+        "<UNK>"
+    )
+)
+
+print(
+    "Test text:",
+    test_text
+)
+
+print(
+    "Prediction after training:",
+    test_prediction
+)
 
 
 # -------------------------
