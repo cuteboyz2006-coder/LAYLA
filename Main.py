@@ -419,3 +419,62 @@ print(
         "<UNK>"
     )
 )
+# -------------------------
+# Fresh model checkpoint verification
+# -------------------------
+
+fresh_tokenizer = Tokenizer()
+
+fresh_embedding = TokenEmbeddings(
+    vocab_size=len(tokenizer.token_to_id),
+    embedding_size=16
+)
+
+fresh_decoder = TransformerDecoder(
+    embedding_size=16,
+    vocab_size=len(tokenizer.token_to_id),
+    hidden_size=32
+)
+
+fresh_checkpoint = Checkpoint()
+
+fresh_checkpoint.load(
+    path="layla_checkpoint.json",
+    tokenizer=fresh_tokenizer,
+    embedding=fresh_embedding,
+    decoder=fresh_decoder
+)
+
+fresh_token_ids = fresh_tokenizer.encode(
+    test_text
+)
+
+fresh_vectors = fresh_embedding.encode(
+    fresh_token_ids
+)
+
+fresh_output = fresh_decoder.forward(
+    fresh_vectors
+)
+
+fresh_logits = fresh_decoder.logits(
+    fresh_output
+)
+
+fresh_prediction_id = (
+    fresh_decoder.predict_next_token(
+        fresh_logits
+    )
+)
+
+fresh_prediction = (
+    fresh_tokenizer.id_to_token.get(
+        fresh_prediction_id,
+        "<UNK>"
+    )
+)
+
+print(
+    "Prediction from fresh checkpoint model:",
+    fresh_prediction
+)
