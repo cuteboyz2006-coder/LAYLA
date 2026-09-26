@@ -62,6 +62,52 @@ embedding = TokenEmbeddings(
     ),
     embedding_size=16
 )
+# -------------------------
+# Target mapping diagnostic
+# -------------------------
+
+print("\nTarget mapping:")
+
+shown = 0
+
+for sequence in sequences:
+
+    input_ids = sequence["input"]
+    target_ids = sequence["target"]
+
+    for position in range(
+        len(input_ids)
+    ):
+
+        current_input = input_ids[
+            :position + 1
+        ]
+
+        target_id = target_ids[
+            position
+        ]
+
+        input_text = tokenizer.decode(
+            current_input
+        )
+
+        target_text = tokenizer.decode(
+            [target_id]
+        )
+
+        print(
+            input_text,
+            "->",
+            target_text
+        )
+
+        shown += 1
+
+        if shown >= 20:
+            break
+
+    if shown >= 20:
+        break
 
 
 # -------------------------
