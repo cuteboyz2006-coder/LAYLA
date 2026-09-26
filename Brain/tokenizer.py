@@ -29,6 +29,15 @@ class Tokenizer:
         ids = [self.token_to_id.get(token, 1) for token in tokens]
 
         return [2] + ids + [3]
+            def encode_prompt(self, text):
+        tokens = text.lower().split()
+
+        ids = [
+            self.token_to_id.get(token, 1)
+            for token in tokens
+        ]
+
+        return [2] + ids
 
     def decode(self, ids):
         tokens = []
