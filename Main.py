@@ -505,6 +505,55 @@ print(
     generated_text
 )
 # -------------------------
+# Top prediction debug
+# -------------------------
+
+debug_token_ids = tokenizer.encode(
+    "I like Python"
+)
+
+debug_vectors = embedding.encode(
+    debug_token_ids
+)
+
+debug_output = decoder.forward(
+    debug_vectors
+)
+
+debug_logits = decoder.logits(
+    debug_output
+)
+
+last_logits = debug_logits[-1]
+
+top_predictions = []
+
+for token_id, score in enumerate(last_logits):
+    token = tokenizer.id_to_token.get(
+        token_id,
+        "<UNK>"
+    )
+
+    top_predictions.append(
+        (score, token_id, token)
+    )
+
+top_predictions.sort(
+    reverse=True
+)
+
+print(
+    "Top predictions for 'I like Python':"
+)
+
+for score, token_id, token in top_predictions[:10]:
+
+    print(
+        token_id,
+        token,
+        score
+    )
+# -------------------------
 # Multiple generation tests
 # -------------------------
 
