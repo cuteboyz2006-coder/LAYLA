@@ -1,62 +1,163 @@
-class Tokenizer:
-    def __init__(self):
-        self.token_to_id = {
-            "<PAD>": 0,
-            "<UNK>": 1,
-            "<BOS>": 2,
-            "<EOS>": 3,
-        }
+from Brain.backprop import OutputBackprop
+from Brain.optimizer import SGD
+from Brain.embedding_backprop import (
+    DecoderInputBackprop,
+    EmbeddingBackprop
+)
+from Brain.decoder_backprop import DecoderBackprop
+from Brain.attention_backprop import AttentionBackprop
 
-        self.id_to_token = {
-            0: "<PAD>",
-            1: "<UNK>",
-            2: "<BOS>",
-            3: "<EOS>",
-        }
 
-    def build_vocab(self, texts):
-        for text in texts:
-            for token in text.lower().split():
-                if token not in self.token_to_id:
-                    idx = len(self.token_to_id)
+class Trainer:
+    def __init__(
+        self,
+        decoder,
+        loss_function,
+        embedding,
+        learning_rate=0.01
+    ):
+        self.decoder = decoder
+        self.loss_function = loss_function
+        self.embedding = embedding
 
-                    self.token_to_id[token] = idx
-                    self.id_to_token[idx] = token
+        self.backprop = OutputBackprop()
 
-    def encode(self, text):
-        tokens = text.lower().split()
+        self.input_backprop = (
+            DecoderInputBackprop()
+        )
 
-        ids = [
-            self.token_to_id.get(token, 1)
-            for token in tokens
-        ]
+        self.embedding_backprop = (
+            EmbeddingBackprop()
+        )
 
-        return [2] + ids + [3]
+        self.decoder_backprop = (
+            DecoderBackprop()
+        )
 
-    def encode_prompt(self, text):
-        tokens = text.lower().split()
+        self.attention_backprop = (
+            AttentionBackprop()
+        )
 
-        ids = [
-            self.token_to_id.get(token, 1)
-            for token in tokens
-        ]
+        self.optimizer = SGD(
+            learning_rate=learning_rate
+        )
 
-        return [2] + ids
+    def train_step(
+        self,
+        vectors,
+        target_id,
+        token_ids
+    ):
+        decoder_output = self.decoder.forward(
+            vectors
+        )
 
-    def decode(self, ids):
-        tokens = []
+        logits = self.decoder.logits(
+            decoder_output
+        )
 
-        for token_id in ids:
-            token = self.id_to_token.get(
-                token_id,
-                "<UNK>"
+        loss = self.loss_function.loss(
+            logits[-1],
+            target_id
+        )
+
+        output_gradient = (
+            self.loss_function.gradient(
+                logits[-1],
+                target_id
             )
+        )
 
-            if token not in (
-                "<PAD>",
-                "<BOS>",
-                "<EOS>"
-            ):
-                tokens.append(token)
+        output_gradients = (
+            self.backprop.calculate_gradients(
+                decoder_output[-1],
+                self.decoder.output_weights,
+                output_gradient
+            )
+        )
 
-        return " ".join(tokens)
+        decoder_input_gradient = (
+            self.input_backprop.calculate_gradient(
+                self.decoder.output_weights,
+                output_gradient
+            )
+        )
+
+        attention_output = (
+            self.decoder.causal_attention(
+                vectors
+            )
+        )
+
+        attention_vector = (
+            attention_output[-1]
+        )
+
+        feed_forward_gradients = (
+            self.decoder_backprop.feed_forward_gradient(
+                attention_vector=attention_vector,
+                decoder_gradient=decoder_input_gradient,
+                decoder=self.decoder
+            )
+        )
+
+        attention_gradient = [
+            decoder_input_gradient[i]
+            + feed_forward_gradients["input"][i]
+            for i in range(
+                len(decoder_input_gradient)
+            )
+        ]
+
+        embedding_gradients = (
+            self.attention_backprop.calculate_input_gradient(
+                embeddings=vectors,
+                output_gradient=attention_gradient,
+                embedding_size=self.decoder.embedding_size
+            )
+        )
+
+        embedding_weight_gradients = (
+            self.embedding_backprop.update_embedding_gradient(
+                embedding_weights=self.embedding.weights,
+                token_ids=token_ids,
+                input_gradients=embedding_gradients
+            )
+        )
+
+        self.optimizer.update_matrix(
+            self.decoder.output_weights,
+            output_gradients["weights"]
+        )
+
+        self.optimizer.update_vector(
+            self.decoder.output_bias,
+            output_gradients["bias"]
+        )
+
+        self.optimizer.update_matrix(
+            self.decoder.w1,
+            feed_forward_gradients["w1"]
+        )
+
+        self.optimizer.update_vector(
+            self.decoder.b1,
+            feed_forward_gradients["b1"]
+        )
+
+        self.optimizer.update_matrix(
+            self.decoder.w2,
+            feed_forward_gradients["w2"]
+        )
+
+        self.optimizer.update_vector(
+            self.decoder.b2,
+            feed_forward_gradients["b2"]
+        )
+
+        self.optimizer.update_matrix(
+            self.embedding.weights,
+            embedding_weight_gradients
+        )
+
+        return loss
