@@ -295,6 +295,48 @@ print(
     "Prediction after training:",
     test_prediction
 )
+# -------------------------
+# Load checkpoint verification
+# -------------------------
+
+loaded_checkpoint = Checkpoint()
+
+loaded_checkpoint.load(
+    path="layla_checkpoint.json",
+    tokenizer=tokenizer,
+    embedding=embedding,
+    decoder=decoder
+)
+
+loaded_vectors = embedding.encode(
+    test_token_ids
+)
+
+loaded_output = decoder.forward(
+    loaded_vectors
+)
+
+loaded_logits = decoder.logits(
+    loaded_output
+)
+
+loaded_prediction_id = (
+    decoder.predict_next_token(
+        loaded_logits
+    )
+)
+
+loaded_prediction = (
+    tokenizer.id_to_token.get(
+        loaded_prediction_id,
+        "<UNK>"
+    )
+)
+
+print(
+    "Prediction after checkpoint load:",
+    loaded_prediction
+)
 
 
 # -------------------------
