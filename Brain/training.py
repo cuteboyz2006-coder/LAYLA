@@ -228,30 +228,4 @@ class Trainer:
             embedding_weight_gradients
         )
 
-        # -------------------------
-        # Verification
-        # -------------------------
-
-        print(
-            "Embedding gradient positions:",
-            len(embedding_gradients)
-        )
-
-        print(
-            "Embedding vocabulary size:",
-            len(self.embedding.weights)
-        )
-
-        print(
-            "Attention gradient positions:",
-            len(embedding_gradients)
-        )
-
-        print(
-            "Attention gradient size:",
-            len(embedding_gradients[0])
-            if embedding_gradients
-            else 0
-        )
-
         return loss
