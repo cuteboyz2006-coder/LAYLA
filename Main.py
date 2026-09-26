@@ -53,16 +53,6 @@ print(
 
 
 # -------------------------
-# Embeddings
-# -------------------------
-
-embedding = TokenEmbeddings(
-    vocab_size=len(
-        tokenizer.token_to_id
-    ),
-    embedding_size=16
-)
-# -------------------------
 # Target mapping diagnostic
 # -------------------------
 
@@ -112,6 +102,18 @@ for sequence in sequences:
 
     if shown >= 20:
         break
+
+
+# -------------------------
+# Embeddings
+# -------------------------
+
+embedding = TokenEmbeddings(
+    vocab_size=len(
+        tokenizer.token_to_id
+    ),
+    embedding_size=16
+)
 
 
 # -------------------------
@@ -266,7 +268,6 @@ embedding_changed = (
     != embedding_after
 )
 
-
 print(
     "Embedding before training:",
     embedding_before
@@ -296,6 +297,8 @@ print(
     "Last epoch loss:",
     last_epoch_loss
 )
+
+
 # -------------------------
 # Save trained checkpoint
 # -------------------------
@@ -308,13 +311,19 @@ checkpoint.save(
     embedding=embedding,
     decoder=decoder
 )
-# -------------------------
-# Prediction after training
-# -------------------------
+
+
+# =========================================================
+# CORRECT NEXT-TOKEN TEST
+# =========================================================
 
 test_text = "Hello Layla"
 
-test_token_ids = tokenizer.encode(
+# IMPORTANT:
+# encode_prompt() does NOT add EOS.
+# We want to predict the token AFTER the prompt.
+
+test_token_ids = tokenizer.encode_prompt(
     test_text
 )
 
@@ -349,9 +358,16 @@ print(
 )
 
 print(
+    "Prompt token IDs:",
+    test_token_ids
+)
+
+print(
     "Prediction after training:",
     test_prediction
 )
+
+
 # -------------------------
 # Load checkpoint verification
 # -------------------------
@@ -396,56 +412,31 @@ print(
 )
 
 
-# -------------------------
-# Test input
-# -------------------------
+# =========================================================
+# CORRECT INPUT TEST
+# =========================================================
 
 text = "Hello Layla"
 
-token_ids = tokenizer.encode(
+token_ids = tokenizer.encode_prompt(
     text
 )
-
-
-# -------------------------
-# Test embedding
-# -------------------------
 
 vectors = embedding.encode(
     token_ids
 )
 
-
-# -------------------------
-# Test decoder
-# -------------------------
-
 decoder_output = decoder.forward(
     vectors
 )
-
-
-# -------------------------
-# Test logits
-# -------------------------
 
 logits = decoder.logits(
     decoder_output
 )
 
-
-# -------------------------
-# Test prediction
-# -------------------------
-
 next_token_id = decoder.predict_next_token(
     logits
 )
-
-
-# -------------------------
-# Test output
-# -------------------------
 
 print(
     "Input:",
@@ -453,7 +444,7 @@ print(
 )
 
 print(
-    "Token IDs:",
+    "Prompt token IDs:",
     token_ids
 )
 
@@ -476,6 +467,8 @@ print(
         "<UNK>"
     )
 )
+
+
 # -------------------------
 # Fresh model checkpoint verification
 # -------------------------
@@ -483,13 +476,17 @@ print(
 fresh_tokenizer = Tokenizer()
 
 fresh_embedding = TokenEmbeddings(
-    vocab_size=len(tokenizer.token_to_id),
+    vocab_size=len(
+        tokenizer.token_to_id
+    ),
     embedding_size=16
 )
 
 fresh_decoder = TransformerDecoder(
     embedding_size=16,
-    vocab_size=len(tokenizer.token_to_id),
+    vocab_size=len(
+        tokenizer.token_to_id
+    ),
     hidden_size=32
 )
 
@@ -502,7 +499,7 @@ fresh_checkpoint.load(
     decoder=fresh_decoder
 )
 
-fresh_token_ids = fresh_tokenizer.encode(
+fresh_token_ids = fresh_tokenizer.encode_prompt(
     test_text
 )
 
@@ -535,6 +532,8 @@ print(
     "Prediction from fresh checkpoint model:",
     fresh_prediction
 )
+
+
 # -------------------------
 # Text generation test
 # -------------------------
@@ -554,11 +553,13 @@ print(
     "Generated text:",
     generated_text
 )
-# -------------------------
-# Top prediction debug
-# -------------------------
 
-debug_token_ids = tokenizer.encode(
+
+# =========================================================
+# TOP PREDICTION DEBUG
+# =========================================================
+
+debug_token_ids = tokenizer.encode_prompt(
     "I like Python"
 )
 
@@ -578,7 +579,10 @@ last_logits = debug_logits[-1]
 
 top_predictions = []
 
-for token_id, score in enumerate(last_logits):
+for token_id, score in enumerate(
+    last_logits
+):
+
     token = tokenizer.id_to_token.get(
         token_id,
         "<UNK>"
@@ -596,16 +600,20 @@ print(
     "Top predictions for 'I like Python':"
 )
 
-for score, token_id, token in top_predictions[:10]:
+for score, token_id, token in (
+    top_predictions[:10]
+):
 
     print(
         token_id,
         token,
         score
     )
-# -------------------------
-# Multiple generation tests
-# -------------------------
+
+
+# =========================================================
+# MULTIPLE GENERATION TESTS
+# =========================================================
 
 test_prompts = [
     "Hello Layla",
@@ -634,9 +642,11 @@ for prompt in test_prompts:
     print(
         "-------------------------"
     )
-    # -------------------------
-# Targeted next-token tests
-# -------------------------
+
+
+# =========================================================
+# TARGETED NEXT-TOKEN TESTS
+# =========================================================
 
 target_tests = [
     "I like",
