@@ -584,3 +584,50 @@ for prompt in test_prompts:
     print(
         "-------------------------"
     )
+    # -------------------------
+# Targeted next-token tests
+# -------------------------
+
+target_tests = [
+    "I like",
+    "Layla is",
+    "Layla can"
+]
+
+for prompt in target_tests:
+
+    prompt_ids = tokenizer.encode_prompt(
+        prompt
+    )
+
+    prompt_vectors = embedding.encode(
+        prompt_ids
+    )
+
+    prompt_output = decoder.forward(
+        prompt_vectors
+    )
+
+    prompt_logits = decoder.logits(
+        prompt_output
+    )
+
+    predicted_id = (
+        decoder.predict_next_token(
+            prompt_logits
+        )
+    )
+
+    predicted_token = (
+        tokenizer.id_to_token.get(
+            predicted_id,
+            "<UNK>"
+        )
+    )
+
+    print(
+        "Next-token test:",
+        prompt,
+        "->",
+        predicted_token
+    )
