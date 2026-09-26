@@ -1,4 +1,5 @@
 class TextData:
+
     def __init__(self):
         self.data = []
 
@@ -11,27 +12,46 @@ class TextData:
     def get_all(self):
         return self.data
 
-    def make_sequences(self, tokenizer, sequence_length=8):
+    def make_sequences(
+        self,
+        tokenizer,
+        sequence_length=8
+    ):
         sequences = []
 
         for text in self.data:
+
             token_ids = tokenizer.encode(text)
 
             if len(token_ids) < 2:
                 continue
 
-            for i in range(len(token_ids) - 1):
-                input_ids = token_ids[:i + 1]
-                target_ids = token_ids[1:i + 2]
+            # Limit the complete sequence
+            token_ids = token_ids[
+                :sequence_length + 1
+            ]
 
-                if len(input_ids) > sequence_length:
-                    break
+            # --------------------------------
+            # One training sequence per text
+            #
+            # input:
+            #   BOS hello layla how
+            #
+            # target:
+            #   hello layla how are
+            # --------------------------------
 
-                sequences.append(
-                    {
-                        "input": input_ids,
-                        "target": target_ids,
-                    }
-                )
+            input_ids = token_ids[:-1]
+            target_ids = token_ids[1:]
+
+            if not input_ids:
+                continue
+
+            sequences.append(
+                {
+                    "input": input_ids,
+                    "target": target_ids
+                }
+            )
 
         return sequences
