@@ -4,6 +4,7 @@ from Brain.embeddings import TokenEmbeddings
 from Brain.decoder import TransformerDecoder
 from Brain.loss import CrossEntropyLoss
 from Brain.training import Trainer
+from Brain.checkpoint import Checkpoint
 
 
 # -------------------------
@@ -237,6 +238,18 @@ print(
 print(
     "Last epoch loss:",
     last_epoch_loss
+)
+# -------------------------
+# Save trained checkpoint
+# -------------------------
+
+checkpoint = Checkpoint()
+
+checkpoint.save(
+    path="layla_checkpoint.json",
+    tokenizer=tokenizer,
+    embedding=embedding,
+    decoder=decoder
 )
 # -------------------------
 # Prediction after training
