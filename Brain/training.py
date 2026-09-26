@@ -63,7 +63,7 @@ class Trainer:
         # Output layer gradients
         # -------------------------
 
-        gradients = (
+        output_gradients = (
             self.backprop.calculate_gradients(
                 decoder_output[-1],
                 self.decoder.output_weights,
@@ -83,12 +83,26 @@ class Trainer:
         )
 
         # -------------------------
-        # Residual backpropagation
+        # Current attention vector
         # -------------------------
 
-        attention_gradient = (
-            self.decoder_backprop.residual_gradient(
-                decoder_input_gradient
+        attention_output = (
+            self.decoder.causal_attention(
+                vectors
+            )
+        )
+
+        attention_vector = attention_output[-1]
+
+        # -------------------------
+        # Feed-forward gradients
+        # -------------------------
+
+        feed_forward_gradients = (
+            self.decoder_backprop.feed_forward_gradient(
+                attention_vector=attention_vector,
+                decoder_gradient=decoder_input_gradient,
+                decoder=self.decoder
             )
         )
 
@@ -98,7 +112,7 @@ class Trainer:
 
         self.optimizer.update_matrix(
             self.decoder.output_weights,
-            gradients["weights"]
+            output_gradients["weights"]
         )
 
         # -------------------------
@@ -107,7 +121,43 @@ class Trainer:
 
         self.optimizer.update_vector(
             self.decoder.output_bias,
-            gradients["bias"]
+            output_gradients["bias"]
+        )
+
+        # -------------------------
+        # Update W1
+        # -------------------------
+
+        self.optimizer.update_matrix(
+            self.decoder.w1,
+            feed_forward_gradients["w1"]
+        )
+
+        # -------------------------
+        # Update B1
+        # -------------------------
+
+        self.optimizer.update_vector(
+            self.decoder.b1,
+            feed_forward_gradients["b1"]
+        )
+
+        # -------------------------
+        # Update W2
+        # -------------------------
+
+        self.optimizer.update_matrix(
+            self.decoder.w2,
+            feed_forward_gradients["w2"]
+        )
+
+        # -------------------------
+        # Update B2
+        # -------------------------
+
+        self.optimizer.update_vector(
+            self.decoder.b2,
+            feed_forward_gradients["b2"]
         )
 
         # -------------------------
@@ -120,8 +170,10 @@ class Trainer:
         )
 
         print(
-            "Attention gradient size:",
-            len(attention_gradient)
+            "Feed-forward input gradient size:",
+            len(
+                feed_forward_gradients["input"]
+            )
         )
 
         return loss
