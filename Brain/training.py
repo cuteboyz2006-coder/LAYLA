@@ -130,8 +130,7 @@ class Trainer:
         )
 
         # -------------------------
-        # Residual + feed-forward
-        # gradient to attention
+        # Gradient to attention
         # -------------------------
 
         attention_gradient = [
@@ -241,6 +240,18 @@ class Trainer:
         print(
             "Embedding vocabulary size:",
             len(self.embedding.weights)
+        )
+
+        print(
+            "Attention gradient positions:",
+            len(embedding_gradients)
+        )
+
+        print(
+            "Attention gradient size:",
+            len(embedding_gradients[0])
+            if embedding_gradients
+            else 0
         )
 
         return loss
