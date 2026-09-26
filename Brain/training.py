@@ -5,20 +5,20 @@ from Brain.embedding_backprop import DecoderInputBackprop
 
 class Trainer:
     def __init__(
-    self,
-    decoder,
-    loss_function,
-    learning_rate=0.01
-):
-    self.decoder = decoder
-    self.loss_function = loss_function
+        self,
+        decoder,
+        loss_function,
+        learning_rate=0.01
+    ):
+        self.decoder = decoder
+        self.loss_function = loss_function
 
-    self.backprop = OutputBackprop()
-    self.input_backprop = DecoderInputBackprop()
+        self.backprop = OutputBackprop()
+        self.input_backprop = DecoderInputBackprop()
 
-    self.optimizer = SGD(
-        learning_rate=learning_rate
-    )
+        self.optimizer = SGD(
+            learning_rate=learning_rate
+        )
 
     def train_step(
         self,
@@ -50,7 +50,7 @@ class Trainer:
         # Gradient
         # -------------------------
 
-                output_gradient = (
+        output_gradient = (
             self.loss_function.gradient(
                 logits[-1],
                 target_id
@@ -94,8 +94,13 @@ class Trainer:
             gradients["bias"]
         )
 
+        # -------------------------
+        # Gradient test
+        # -------------------------
+
         print(
-    "Decoder input gradient size:",
-    len(decoder_input_gradient)
+            "Decoder input gradient size:",
+            len(decoder_input_gradient)
         )
+
         return loss
