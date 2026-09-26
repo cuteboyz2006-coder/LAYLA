@@ -82,7 +82,7 @@ data.add("Layla uses a tokenizer")
 
 
 conflicts = data.find_conflicts(
-    tokenizer
+    Tokenizer
 )
 
 print(
