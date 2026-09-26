@@ -80,35 +80,6 @@ data.add("Layla can learn")
 data.add("Layla can answer questions")
 data.add("Layla uses a tokenizer")
 
-conflicts = data.find_conflicts(
-    tokenizer
-)
-
-print(
-    "\nDataset conflicts:",
-    len(conflicts)
-)
-
-for conflict in conflicts[:10]:
-
-    prefix_text = tokenizer.decode(
-        conflict["prefix"]
-    )
-
-    target_text = [
-        tokenizer.id_to_token.get(
-            token_id,
-            "<UNK>"
-        )
-        for token_id in conflict["targets"]
-    ]
-
-    print(
-        "Conflict:",
-        prefix_text,
-        "->",
-        target_text
-    )
 
 
 # -------------------------
