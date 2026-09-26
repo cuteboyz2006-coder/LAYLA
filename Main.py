@@ -5,6 +5,7 @@ from Brain.decoder import TransformerDecoder
 from Brain.loss import CrossEntropyLoss
 from Brain.training import Trainer
 from Brain.checkpoint import Checkpoint
+from Brain.generation import TextGenerator
 
 
 # -------------------------
@@ -477,4 +478,23 @@ fresh_prediction = (
 print(
     "Prediction from fresh checkpoint model:",
     fresh_prediction
+)
+# -------------------------
+# Text generation test
+# -------------------------
+
+generator = TextGenerator(
+    tokenizer=tokenizer,
+    embedding=embedding,
+    decoder=decoder
+)
+
+generated_text = generator.generate(
+    text="Hello Layla",
+    max_new_tokens=10
+)
+
+print(
+    "Generated text:",
+    generated_text
 )
