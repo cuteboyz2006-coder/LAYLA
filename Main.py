@@ -958,7 +958,7 @@ trainer = Trainer(
     decoder=decoder,
     loss_function=loss_function,
     embedding=embedding,
-    learning_rate=0.1
+    learning_rate=0.01
 )
 
 
