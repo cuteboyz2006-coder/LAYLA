@@ -6,6 +6,7 @@ from Brain.loss import CrossEntropyLoss
 from Brain.training import Trainer
 from Brain.checkpoint import Checkpoint
 from Brain.generation import TextGenerator
+from Brain.gradient_check import GradientChecker
 
 
 # =========================================================
@@ -470,6 +471,73 @@ decoder = TransformerDecoder(
     hidden_size=32
 )
 
+# =========================================================
+# MATHEMATICAL GRADIENT CHECK
+# =========================================================
+
+gradient_checker = GradientChecker()
+
+gradient_test_ids = tokenizer.encode_prompt(
+    "Python is"
+)
+
+gradient_test_vectors = embedding.encode(
+    gradient_test_ids
+)
+
+gradient_test_output = decoder.forward(
+    gradient_test_vectors
+)
+
+gradient_test_vector = (
+    gradient_test_output[-1]
+)
+
+gradient_target_id = tokenizer.token_to_id.get(
+    "a"
+)
+
+gradient_result = (
+    gradient_checker.check_output_weight(
+        decoder_vector=gradient_test_vector,
+        output_weights=decoder.output_weights,
+        output_bias=decoder.output_bias,
+        target_id=gradient_target_id,
+        row=0,
+        column=gradient_target_id
+    )
+)
+
+print(
+    "\nMathematical gradient check:"
+)
+
+print(
+    "Analytical gradient:",
+    gradient_result["analytical"]
+)
+
+print(
+    "Numerical gradient:",
+    gradient_result["numerical"]
+)
+
+print(
+    "Difference:",
+    gradient_result["difference"]
+)
+
+if gradient_result["difference"] < 0.0001:
+
+    print(
+        "Gradient check: PASS"
+    )
+
+else:
+
+    print(
+        "Gradient check: FAIL"
+    )
 
 # =========================================================
 # LOSS
