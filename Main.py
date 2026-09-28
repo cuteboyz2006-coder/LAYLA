@@ -319,6 +319,250 @@ data.add("Buildozer can build Android packages")
 data.add("Mobile apps use interfaces")
 data.add("Users interact with applications")
 data.add("Software updates add features")
+# ---------------------------------------------------------
+# Expanded AI and Neural Network vocabulary
+# ---------------------------------------------------------
+
+data.add("Artificial intelligence learns patterns from data")
+data.add("Machine learning models learn from examples")
+data.add("A neural network contains connected layers")
+data.add("A neural network contains weights and biases")
+data.add("Weights control the strength of connections")
+data.add("Biases shift the output of a layer")
+data.add("Training updates model parameters")
+data.add("A dataset contains training examples")
+data.add("Training data contains input examples")
+data.add("A target token is the expected output")
+data.add("A model predicts the next token")
+data.add("A tokenizer converts text into tokens")
+data.add("A vocabulary contains known tokens")
+data.add("An unknown token represents unseen text")
+data.add("Embeddings convert tokens into vectors")
+data.add("A vector contains numerical values")
+data.add("Attention compares queries and keys")
+data.add("Attention produces weighted values")
+data.add("Causal attention uses previous tokens")
+data.add("A decoder processes token representations")
+data.add("Logits represent scores for tokens")
+data.add("Softmax converts logits into probabilities")
+data.add("Cross entropy measures prediction error")
+data.add("Backpropagation calculates gradients")
+data.add("Gradients update model parameters")
+data.add("An optimizer updates weights")
+data.add("Learning rate controls update size")
+data.add("Gradient clipping limits large updates")
+data.add("A checkpoint stores model parameters")
+data.add("A trained model can generate text")
+
+
+# ---------------------------------------------------------
+# Expanded Python vocabulary
+# ---------------------------------------------------------
+
+data.add("Python programs contain statements")
+data.add("Python supports strings")
+data.add("Python supports integers")
+data.add("Python supports floating point numbers")
+data.add("Python supports lists")
+data.add("Python supports dictionaries")
+data.add("Python supports loops")
+data.add("Python supports conditions")
+data.add("Python supports modules")
+data.add("Python supports classes")
+data.add("A list contains multiple values")
+data.add("A dictionary stores key value pairs")
+data.add("A loop repeats instructions")
+data.add("A condition controls program flow")
+data.add("A module contains reusable code")
+data.add("An import loads a module")
+data.add("A function can receive arguments")
+data.add("A function can return a value")
+data.add("Exceptions handle program errors")
+data.add("Debugging helps find programming errors")
+data.add("Testing checks program behavior")
+data.add("Readable code is easier to maintain")
+
+
+# ---------------------------------------------------------
+# Expanded programming vocabulary
+# ---------------------------------------------------------
+
+data.add("An algorithm is a sequence of steps")
+data.add("Algorithms can solve computational problems")
+data.add("Data structures organize information")
+data.add("Arrays store ordered values")
+data.add("Stacks follow last in first out")
+data.add("Queues follow first in first out")
+data.add("A database stores structured information")
+data.add("An API allows programs to communicate")
+data.add("A server provides services to clients")
+data.add("A client sends requests to a server")
+data.add("Source code describes program behavior")
+data.add("A compiler converts source code")
+data.add("An interpreter executes program instructions")
+data.add("A bug is an error in software")
+data.add("A test can detect a bug")
+data.add("Version control tracks code changes")
+data.add("Git records changes to files")
+data.add("A commit records a change")
+data.add("A branch contains a line of development")
+data.add("A repository stores project history")
+
+
+# ---------------------------------------------------------
+# Expanded Android and Kivy vocabulary
+# ---------------------------------------------------------
+
+data.add("Android applications run on mobile devices")
+data.add("An APK contains an Android application")
+data.add("Android applications can use permissions")
+data.add("An activity represents an application screen")
+data.add("A user interface contains controls")
+data.add("A button can trigger an action")
+data.add("A text field accepts user input")
+data.add("A label displays text")
+data.add("A layout arranges interface elements")
+data.add("Kivy is a Python framework")
+data.add("Kivy can create mobile interfaces")
+data.add("Kivy applications can contain widgets")
+data.add("A widget can display information")
+data.add("Buildozer can package Python applications")
+data.add("Buildozer uses a build configuration")
+data.add("GitHub Actions can automate builds")
+data.add("A workflow contains automated steps")
+data.add("A build can produce an APK")
+data.add("An application can store local data")
+data.add("Local storage keeps information on a device")
+
+
+# ---------------------------------------------------------
+# Expanded mathematics vocabulary
+# ---------------------------------------------------------
+
+data.add("Addition increases a total")
+data.add("Subtraction decreases a value")
+data.add("Multiplication can represent repeated addition")
+data.add("Division can split a quantity")
+data.add("A fraction represents part of a whole")
+data.add("A decimal represents a numerical value")
+data.add("A percentage represents a part of one hundred")
+data.add("An equation contains an equality")
+data.add("A variable represents an unknown value")
+data.add("An expression contains mathematical operations")
+data.add("A prime number has two positive factors")
+data.add("An even number is divisible by two")
+data.add("An odd number is not divisible by two")
+data.add("A square has equal sides")
+data.add("A rectangle has opposite equal sides")
+data.add("A triangle has three angles")
+data.add("The perimeter measures boundary length")
+data.add("Area measures a surface")
+data.add("Volume measures three dimensional space")
+data.add("A graph represents mathematical information")
+
+
+# ---------------------------------------------------------
+# Expanded physics vocabulary
+# ---------------------------------------------------------
+
+data.add("Physics studies motion and energy")
+data.add("Speed measures distance per time")
+data.add("Velocity includes direction")
+data.add("Acceleration measures change in velocity")
+data.add("Force can accelerate an object")
+data.add("Mass measures the amount of matter")
+data.add("Gravity acts between masses")
+data.add("Friction opposes motion")
+data.add("Kinetic energy is energy of motion")
+data.add("Potential energy depends on position")
+data.add("Energy can move between systems")
+data.add("Work transfers energy through force")
+data.add("Power measures the rate of energy transfer")
+data.add("Light can travel through empty space")
+data.add("Sound travels through a medium")
+data.add("Waves transfer energy")
+data.add("Temperature measures thermal state")
+data.add("Electric current is flow of charge")
+data.add("Voltage is a difference in electric potential")
+data.add("Resistance opposes electric current")
+
+
+# ---------------------------------------------------------
+# Expanded chemistry vocabulary
+# ---------------------------------------------------------
+
+data.add("Chemistry studies matter and its changes")
+data.add("An atom is a basic unit of matter")
+data.add("Atoms contain protons and neutrons")
+data.add("Electrons surround the atomic nucleus")
+data.add("Protons have positive charge")
+data.add("Electrons have negative charge")
+data.add("Neutrons have no electric charge")
+data.add("An element contains one type of atom")
+data.add("A compound contains different elements")
+data.add("A molecule contains bonded atoms")
+data.add("Chemical reactions change substances")
+data.add("Reactants participate in chemical reactions")
+data.add("Products form during chemical reactions")
+data.add("Water is a chemical compound")
+data.add("Oxygen is a chemical element")
+data.add("Hydrogen is a chemical element")
+data.add("Carbon is a chemical element")
+data.add("Salt can contain sodium and chlorine")
+data.add("Acids and bases have different properties")
+data.add("The periodic table organizes elements")
+
+
+# ---------------------------------------------------------
+# Expanded biology vocabulary
+# ---------------------------------------------------------
+
+data.add("Biology studies living organisms")
+data.add("Cells are basic units of organisms")
+data.add("Plants contain cells")
+data.add("Animals contain cells")
+data.add("Cells contain genetic information")
+data.add("DNA stores genetic information")
+data.add("Genes contain inherited information")
+data.add("Plants use sunlight for photosynthesis")
+data.add("Photosynthesis produces chemical energy")
+data.add("Roots absorb water from soil")
+data.add("Leaves perform photosynthesis")
+data.add("Animals need energy to live")
+data.add("The heart pumps blood")
+data.add("The lungs exchange gases")
+data.add("The brain processes information")
+data.add("The nervous system sends signals")
+data.add("Living organisms need energy")
+data.add("Food provides energy and nutrients")
+data.add("Ecosystems contain living organisms")
+data.add("Plants and animals interact with ecosystems")
+
+
+# ---------------------------------------------------------
+# Expanded Layla knowledge
+# ---------------------------------------------------------
+
+data.add("Layla is a personal AI")
+data.add("Layla can process user input")
+data.add("Layla converts text into tokens")
+data.add("Layla converts tokens into embeddings")
+data.add("Layla processes embeddings with attention")
+data.add("Layla uses a decoder to process text")
+data.add("Layla predicts the next token")
+data.add("Layla can generate text from tokens")
+data.add("Layla stores learned model parameters")
+data.add("Layla can load a checkpoint")
+data.add("Layla can save a checkpoint")
+data.add("Layla can run offline")
+data.add("Layla can process local information")
+data.add("Layla uses Python for its brain")
+data.add("Layla uses Kivy for its interface")
+data.add("Layla can be packaged as an Android application")
+data.add("Layla can learn patterns from training data")
+data.add("Layla improves through training")
+data.add("Layla uses gradients during training")
+data.add("Layla uses an optimizer during training")
 
 
 # =========================================================
