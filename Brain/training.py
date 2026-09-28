@@ -15,8 +15,8 @@ class Trainer:
         decoder,
         loss_function,
         embedding,
-        learning_rate=0.01,
-        max_gradient=1.0
+        learning_rate=0.001,
+        max_gradient=0.5
     ):
         self.decoder = decoder
         self.loss_function = loss_function
@@ -46,11 +46,12 @@ class Trainer:
             learning_rate=learning_rate
         )
 
-    # --------------------------------
+    # -----------------------------------------------------
     # Gradient clipping
-    # --------------------------------
+    # -----------------------------------------------------
 
     def clip_value(self, value):
+
         if value > self.max_gradient:
             return self.max_gradient
 
@@ -60,12 +61,14 @@ class Trainer:
         return value
 
     def clip_vector(self, vector):
+
         return [
             self.clip_value(value)
             for value in vector
         ]
 
     def clip_matrix(self, matrix):
+
         return [
             [
                 self.clip_value(value)
@@ -74,9 +77,9 @@ class Trainer:
             for row in matrix
         ]
 
-    # --------------------------------
-    # Train one token prediction
-    # --------------------------------
+    # -----------------------------------------------------
+    # Training step
+    # -----------------------------------------------------
 
     def train_step(
         self,
@@ -88,17 +91,17 @@ class Trainer:
         if not vectors:
             return 0.0
 
-        # --------------------------------
         # Forward pass
-        # --------------------------------
-
-        decoder_output = self.decoder.forward(
-            vectors
+        decoder_output = (
+            self.decoder.forward(
+                vectors
+            )
         )
 
         if not decoder_output:
             return 0.0
 
+        # Logits
         logits = self.decoder.logits(
             decoder_output
         )
@@ -106,21 +109,16 @@ class Trainer:
         if not logits:
             return 0.0
 
+        # We train on the final position
         last_logits = logits[-1]
 
-        # --------------------------------
         # Loss
-        # --------------------------------
-
         loss = self.loss_function.loss(
             last_logits,
             target_id
         )
 
-        # --------------------------------
-        # Output gradient
-        # --------------------------------
-
+        # dLoss / dLogits
         output_gradient = (
             self.loss_function.gradient(
                 last_logits,
@@ -134,9 +132,9 @@ class Trainer:
             )
         )
 
-        # --------------------------------
-        # Output layer backprop
-        # --------------------------------
+        # -------------------------------------------------
+        # Output layer gradients
+        # -------------------------------------------------
 
         output_gradients = (
             self.backprop.calculate_gradients(
@@ -158,9 +156,9 @@ class Trainer:
             )
         )
 
-        # --------------------------------
-        # Gradient into decoder
-        # --------------------------------
+        # -------------------------------------------------
+        # Gradient flowing back into decoder output
+        # -------------------------------------------------
 
         decoder_input_gradient = (
             self.input_backprop.calculate_gradient(
@@ -175,9 +173,9 @@ class Trainer:
             )
         )
 
-        # --------------------------------
-        # Recalculate causal attention
-        # --------------------------------
+        # -------------------------------------------------
+        # Attention forward
+        # -------------------------------------------------
 
         attention_output = (
             self.decoder.causal_attention(
@@ -192,9 +190,9 @@ class Trainer:
             attention_output[-1]
         )
 
-        # --------------------------------
-        # Feed-forward backprop
-        # --------------------------------
+        # -------------------------------------------------
+        # Feed-forward backpropagation
+        # -------------------------------------------------
 
         feed_forward_gradients = (
             self.decoder_backprop.feed_forward_gradient(
@@ -204,12 +202,13 @@ class Trainer:
             )
         )
 
-        # --------------------------------
-        # Residual connection
+        # Residual connection:
         #
         # decoder_output =
-        # attention + feed_forward
-        # --------------------------------
+        # attention_output + feed_forward_output
+        #
+        # Therefore the attention path receives
+        # the residual gradient plus FF input gradient.
 
         attention_gradient = [
             decoder_input_gradient[i]
@@ -225,9 +224,9 @@ class Trainer:
             )
         )
 
-        # --------------------------------
-        # Attention backprop
-        # --------------------------------
+        # -------------------------------------------------
+        # Attention backpropagation
+        # -------------------------------------------------
 
         embedding_gradients = (
             self.attention_backprop.calculate_input_gradient(
@@ -244,9 +243,9 @@ class Trainer:
             for gradient in embedding_gradients
         ]
 
-        # --------------------------------
-        # Embedding weight gradients
-        # --------------------------------
+        # -------------------------------------------------
+        # Embedding gradients
+        # -------------------------------------------------
 
         embedding_weight_gradients = (
             self.embedding_backprop.update_embedding_gradient(
@@ -262,9 +261,9 @@ class Trainer:
             )
         )
 
-        # --------------------------------
-        # Feed-forward gradients
-        # --------------------------------
+        # -------------------------------------------------
+        # Decoder gradients
+        # -------------------------------------------------
 
         w1_gradients = (
             self.clip_matrix(
@@ -290,9 +289,9 @@ class Trainer:
             )
         )
 
-        # --------------------------------
-        # Apply updates
-        # --------------------------------
+        # -------------------------------------------------
+        # Update output layer
+        # -------------------------------------------------
 
         self.optimizer.update_matrix(
             self.decoder.output_weights,
@@ -303,6 +302,10 @@ class Trainer:
             self.decoder.output_bias,
             output_bias_gradients
         )
+
+        # -------------------------------------------------
+        # Update feed-forward layer
+        # -------------------------------------------------
 
         self.optimizer.update_matrix(
             self.decoder.w1,
@@ -323,6 +326,10 @@ class Trainer:
             self.decoder.b2,
             b2_gradients
         )
+
+        # -------------------------------------------------
+        # Update embeddings
+        # -------------------------------------------------
 
         self.optimizer.update_matrix(
             self.embedding.weights,
