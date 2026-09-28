@@ -7,6 +7,9 @@ from Brain.training import Trainer
 from Brain.checkpoint import Checkpoint
 from Brain.generation import TextGenerator
 from Brain.gradient_check import GradientChecker
+from Brain.feed_forward_gradient_check import (
+    FeedForwardGradientChecker
+)
 
 
 # =========================================================
@@ -470,6 +473,99 @@ decoder = TransformerDecoder(
     ),
     hidden_size=32
 )
+# =========================================================
+# FEED-FORWARD MATHEMATICAL GRADIENT CHECK
+# =========================================================
+
+ff_checker = FeedForwardGradientChecker()
+
+ff_input = [
+    0.2,
+    -0.1,
+    0.4,
+    0.3
+]
+
+ff_w1 = [
+    [0.10, -0.20, 0.30, 0.15],
+    [-0.10, 0.25, -0.15, 0.20],
+    [0.05, 0.10, 0.20, -0.25],
+    [0.30, -0.05, 0.10, 0.15]
+]
+
+ff_b1 = [
+    0.10,
+    0.05,
+    -0.10,
+    0.20
+]
+
+ff_w2 = [
+    [0.20, -0.10, 0.15, 0.05],
+    [-0.15, 0.25, 0.10, -0.20],
+    [0.05, 0.10, -0.25, 0.30],
+    [0.10, -0.05, 0.20, 0.15]
+]
+
+ff_b2 = [
+    0.10,
+    -0.05,
+    0.20,
+    0.05
+]
+
+ff_results = ff_checker.check(
+    input_vector=ff_input,
+    w1=ff_w1,
+    b1=ff_b1,
+    w2=ff_w2,
+    b2=ff_b2
+)
+
+print(
+    "\nFeed-forward mathematical gradient check:"
+)
+
+ff_pass = True
+
+for result in ff_results:
+
+    print(
+        result["parameter"],
+        "Analytical:",
+        result["analytical"]
+    )
+
+    print(
+        result["parameter"],
+        "Numerical:",
+        result["numerical"]
+    )
+
+    print(
+        result["parameter"],
+        "Difference:",
+        result["difference"]
+    )
+
+    print(
+        "-------------------------"
+    )
+
+    if result["difference"] >= 0.0001:
+        ff_pass = False
+
+if ff_pass:
+
+    print(
+        "Feed-forward gradient check: PASS"
+    )
+
+else:
+
+    print(
+        "Feed-forward gradient check: FAIL"
+    )
 
 # =========================================================
 # MATHEMATICAL GRADIENT CHECK
