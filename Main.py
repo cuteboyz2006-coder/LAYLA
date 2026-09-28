@@ -486,7 +486,8 @@ trainer = Trainer(
     decoder=decoder,
     loss_function=loss_function,
     embedding=embedding,
-    learning_rate=0.01
+    learning_rate=0.0001,
+    max_gradient=0.1
 )
 
 
@@ -494,7 +495,7 @@ trainer = Trainer(
 # TRAINING CONFIGURATION
 # =========================================================
 
-epochs = 100
+epochs = 50
 
 first_epoch_loss = None
 last_epoch_loss = None
