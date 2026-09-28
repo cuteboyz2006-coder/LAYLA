@@ -1115,4 +1115,4 @@ for prompt in target_tests:
         prompt,
         "->",
         predicted_token
-            )
+)
