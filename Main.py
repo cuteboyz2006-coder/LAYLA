@@ -10,6 +10,9 @@ from Brain.gradient_check import GradientChecker
 from Brain.feed_forward_gradient_check import (
     FeedForwardGradientChecker
 )
+from Brain.attention_gradient_check import (
+    AttentionGradientChecker
+)
 
 
 # =========================================================
@@ -473,6 +476,67 @@ decoder = TransformerDecoder(
     ),
     hidden_size=32
 )
+print()
+print("Attention mathematical gradient check:")
+
+attention_checker = AttentionGradientChecker()
+
+test_embeddings = [
+    [0.10, 0.20, 0.30, 0.40],
+    [0.20, 0.30, 0.40, 0.50],
+    [0.30, 0.40, 0.50, 0.60]
+]
+
+test_output_gradient = [
+    0.5,
+    0.4,
+    0.3,
+    0.2
+]
+
+attention_results = (
+    attention_checker.check(
+        embeddings=test_embeddings,
+        embedding_size=4,
+        output_gradient=test_output_gradient
+    )
+)
+
+attention_passed = True
+
+for result in attention_results:
+
+    print(
+        "Position:",
+        result["position"],
+        "Dimension:",
+        result["dimension"]
+    )
+
+    print(
+        "Analytical:",
+        result["analytical"]
+    )
+
+    print(
+        "Numerical:",
+        result["numerical"]
+    )
+
+    print(
+        "Difference:",
+        result["difference"]
+    )
+
+    print("-------------------------")
+
+    if result["difference"] > 0.0001:
+        attention_passed = False
+
+if attention_passed:
+    print("Attention gradient check: PASS")
+else:
+    print("Attention gradient check: FAIL")
 # =========================================================
 # FEED-FORWARD MATHEMATICAL GRADIENT CHECK
 # =========================================================
