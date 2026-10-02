@@ -15,14 +15,16 @@ class Trainer:
         decoder,
         loss_function,
         embedding,
-        learning_rate=0.001,
-        max_gradient=0.5
+        learning_rate=0.01,
+        max_gradient=1.0,
+        max_parameter=1.0
     ):
         self.decoder = decoder
         self.loss_function = loss_function
         self.embedding = embedding
 
         self.max_gradient = max_gradient
+        self.max_parameter = max_parameter
 
         self.backprop = OutputBackprop()
 
@@ -42,16 +44,27 @@ class Trainer:
             AttentionBackprop()
         )
 
-        self.optimizer = SGD(
-            learning_rate=learning_rate
+        # Extra stability:
+        # Main.py currently gives 0.0001.
+        # Internally we use 10% of that.
+        effective_learning_rate = (
+            learning_rate * 0.1
         )
 
-    # -----------------------------------------------------
+        self.optimizer = SGD(
+            learning_rate=effective_learning_rate
+        )
+
+        print(
+            "Trainer learning rate:",
+            effective_learning_rate
+        )
+
+    # --------------------------------------------------
     # Gradient clipping
-    # -----------------------------------------------------
+    # --------------------------------------------------
 
     def clip_value(self, value):
-
         if value > self.max_gradient:
             return self.max_gradient
 
@@ -61,14 +74,12 @@ class Trainer:
         return value
 
     def clip_vector(self, vector):
-
         return [
             self.clip_value(value)
             for value in vector
         ]
 
     def clip_matrix(self, matrix):
-
         return [
             [
                 self.clip_value(value)
@@ -77,9 +88,37 @@ class Trainer:
             for row in matrix
         ]
 
-    # -----------------------------------------------------
+    # --------------------------------------------------
+    # Parameter safety
+    # --------------------------------------------------
+
+    def clamp_parameter(self, value):
+        if value > self.max_parameter:
+            return self.max_parameter
+
+        if value < -self.max_parameter:
+            return -self.max_parameter
+
+        return value
+
+    def clamp_vector(self, vector):
+        return [
+            self.clamp_parameter(value)
+            for value in vector
+        ]
+
+    def clamp_matrix(self, matrix):
+        return [
+            [
+                self.clamp_parameter(value)
+                for value in row
+            ]
+            for row in matrix
+        ]
+
+    # --------------------------------------------------
     # Training step
-    # -----------------------------------------------------
+    # --------------------------------------------------
 
     def train_step(
         self,
@@ -87,21 +126,20 @@ class Trainer:
         target_id,
         token_ids
     ):
-
         if not vectors:
             return 0.0
 
+        # ----------------------------------------------
         # Forward pass
-        decoder_output = (
-            self.decoder.forward(
-                vectors
-            )
+        # ----------------------------------------------
+
+        decoder_output = self.decoder.forward(
+            vectors
         )
 
         if not decoder_output:
             return 0.0
 
-        # Logits
         logits = self.decoder.logits(
             decoder_output
         )
@@ -109,16 +147,21 @@ class Trainer:
         if not logits:
             return 0.0
 
-        # We train on the final position
         last_logits = logits[-1]
 
+        # ----------------------------------------------
         # Loss
+        # ----------------------------------------------
+
         loss = self.loss_function.loss(
             last_logits,
             target_id
         )
 
-        # dLoss / dLogits
+        # ----------------------------------------------
+        # Output gradient
+        # ----------------------------------------------
+
         output_gradient = (
             self.loss_function.gradient(
                 last_logits,
@@ -132,9 +175,9 @@ class Trainer:
             )
         )
 
-        # -------------------------------------------------
-        # Output layer gradients
-        # -------------------------------------------------
+        # ----------------------------------------------
+        # Output layer backprop
+        # ----------------------------------------------
 
         output_gradients = (
             self.backprop.calculate_gradients(
@@ -156,9 +199,9 @@ class Trainer:
             )
         )
 
-        # -------------------------------------------------
-        # Gradient flowing back into decoder output
-        # -------------------------------------------------
+        # ----------------------------------------------
+        # Gradient into decoder
+        # ----------------------------------------------
 
         decoder_input_gradient = (
             self.input_backprop.calculate_gradient(
@@ -173,9 +216,9 @@ class Trainer:
             )
         )
 
-        # -------------------------------------------------
-        # Attention forward
-        # -------------------------------------------------
+        # ----------------------------------------------
+        # Attention forward values
+        # ----------------------------------------------
 
         attention_output = (
             self.decoder.causal_attention(
@@ -190,9 +233,9 @@ class Trainer:
             attention_output[-1]
         )
 
-        # -------------------------------------------------
-        # Feed-forward backpropagation
-        # -------------------------------------------------
+        # ----------------------------------------------
+        # Feed-forward backprop
+        # ----------------------------------------------
 
         feed_forward_gradients = (
             self.decoder_backprop.feed_forward_gradient(
@@ -202,13 +245,9 @@ class Trainer:
             )
         )
 
-        # Residual connection:
-        #
-        # decoder_output =
-        # attention_output + feed_forward_output
-        #
-        # Therefore the attention path receives
-        # the residual gradient plus FF input gradient.
+        # ----------------------------------------------
+        # Residual connection
+        # ----------------------------------------------
 
         attention_gradient = [
             decoder_input_gradient[i]
@@ -224,9 +263,9 @@ class Trainer:
             )
         )
 
-        # -------------------------------------------------
-        # Attention backpropagation
-        # -------------------------------------------------
+        # ----------------------------------------------
+        # Attention backprop
+        # ----------------------------------------------
 
         embedding_gradients = (
             self.attention_backprop.calculate_input_gradient(
@@ -243,9 +282,9 @@ class Trainer:
             for gradient in embedding_gradients
         ]
 
-        # -------------------------------------------------
+        # ----------------------------------------------
         # Embedding gradients
-        # -------------------------------------------------
+        # ----------------------------------------------
 
         embedding_weight_gradients = (
             self.embedding_backprop.update_embedding_gradient(
@@ -261,9 +300,9 @@ class Trainer:
             )
         )
 
-        # -------------------------------------------------
+        # ----------------------------------------------
         # Decoder gradients
-        # -------------------------------------------------
+        # ----------------------------------------------
 
         w1_gradients = (
             self.clip_matrix(
@@ -289,9 +328,9 @@ class Trainer:
             )
         )
 
-        # -------------------------------------------------
-        # Update output layer
-        # -------------------------------------------------
+        # ----------------------------------------------
+        # Parameter updates
+        # ----------------------------------------------
 
         self.optimizer.update_matrix(
             self.decoder.output_weights,
@@ -302,10 +341,6 @@ class Trainer:
             self.decoder.output_bias,
             output_bias_gradients
         )
-
-        # -------------------------------------------------
-        # Update feed-forward layer
-        # -------------------------------------------------
 
         self.optimizer.update_matrix(
             self.decoder.w1,
@@ -327,13 +362,55 @@ class Trainer:
             b2_gradients
         )
 
-        # -------------------------------------------------
-        # Update embeddings
-        # -------------------------------------------------
-
         self.optimizer.update_matrix(
             self.embedding.weights,
             embedding_weight_gradients
+        )
+
+        # ----------------------------------------------
+        # Safety clamp
+        # ----------------------------------------------
+
+        self.decoder.output_weights = (
+            self.clamp_matrix(
+                self.decoder.output_weights
+            )
+        )
+
+        self.decoder.output_bias = (
+            self.clamp_vector(
+                self.decoder.output_bias
+            )
+        )
+
+        self.decoder.w1 = (
+            self.clamp_matrix(
+                self.decoder.w1
+            )
+        )
+
+        self.decoder.b1 = (
+            self.clamp_vector(
+                self.decoder.b1
+            )
+        )
+
+        self.decoder.w2 = (
+            self.clamp_matrix(
+                self.decoder.w2
+            )
+        )
+
+        self.decoder.b2 = (
+            self.clamp_vector(
+                self.decoder.b2
+            )
+        )
+
+        self.embedding.weights = (
+            self.clamp_matrix(
+                self.embedding.weights
+            )
         )
 
         return loss
