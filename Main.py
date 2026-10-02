@@ -319,6 +319,8 @@ data.add("Buildozer can build Android packages")
 data.add("Mobile apps use interfaces")
 data.add("Users interact with applications")
 data.add("Software updates add features")
+
+
 # ---------------------------------------------------------
 # Expanded AI and Neural Network vocabulary
 # ---------------------------------------------------------
@@ -720,6 +722,12 @@ decoder = TransformerDecoder(
     ),
     hidden_size=32
 )
+
+
+# =========================================================
+# ATTENTION GRADIENT CHECK
+# =========================================================
+
 print()
 print("Attention mathematical gradient check:")
 
@@ -781,8 +789,10 @@ if attention_passed:
     print("Attention gradient check: PASS")
 else:
     print("Attention gradient check: FAIL")
+
+
 # =========================================================
-# FEED-FORWARD MATHEMATICAL GRADIENT CHECK
+# FEED-FORWARD GRADIENT CHECK
 # =========================================================
 
 ff_checker = FeedForwardGradientChecker()
@@ -875,8 +885,9 @@ else:
         "Feed-forward gradient check: FAIL"
     )
 
+
 # =========================================================
-# MATHEMATICAL GRADIENT CHECK
+# OUTPUT GRADIENT CHECK
 # =========================================================
 
 gradient_checker = GradientChecker()
@@ -943,6 +954,7 @@ else:
         "Gradient check: FAIL"
     )
 
+
 # =========================================================
 # LOSS
 # =========================================================
@@ -970,6 +982,13 @@ epochs = 50
 
 first_epoch_loss = None
 last_epoch_loss = None
+
+best_loss = float("inf")
+best_epoch = 0
+
+checkpoint = Checkpoint()
+
+best_checkpoint_path = "layla_best_checkpoint.json"
 
 
 # =========================================================
@@ -1028,7 +1047,6 @@ for epoch in range(epochs):
         average_loss = 0.0
 
     if first_epoch_loss is None:
-
         first_epoch_loss = average_loss
 
     last_epoch_loss = average_loss
@@ -1042,20 +1060,72 @@ for epoch in range(epochs):
         average_loss
     )
 
+    # -----------------------------------------------------
+    # BEST MODEL CHECKPOINT
+    # -----------------------------------------------------
+
+    if average_loss < best_loss:
+
+        best_loss = average_loss
+        best_epoch = epoch + 1
+
+        checkpoint.save(
+            path=best_checkpoint_path,
+            tokenizer=tokenizer,
+            embedding=embedding,
+            decoder=decoder
+        )
+
+        print(
+            "New best model saved."
+        )
+
+        print(
+            "Best epoch:",
+            best_epoch
+        )
+
+        print(
+            "Best loss:",
+            best_loss
+        )
+
 
 # =========================================================
-# EMBEDDING AFTER TRAINING
+# LOAD BEST MODEL
+# =========================================================
+
+print()
+print(
+    "Loading best checkpoint..."
+)
+
+checkpoint.load(
+    path=best_checkpoint_path,
+    tokenizer=tokenizer,
+    embedding=embedding,
+    decoder=decoder
+)
+
+print(
+    "Best epoch:",
+    best_epoch
+)
+
+print(
+    "Best loss:",
+    best_loss
+)
+
+
+# =========================================================
+# EMBEDDING AFTER BEST MODEL LOAD
 # =========================================================
 
 embedding_after = [
     value
     for value in embedding.weights[4]
 ]
-
-
-# =========================================================
-# LEARNING VERIFICATION
-# =========================================================
 
 embedding_changed = (
     embedding_before
@@ -1068,7 +1138,7 @@ print(
 )
 
 print(
-    "Embedding after training:",
+    "Embedding after best model:",
     embedding_after
 )
 
@@ -1089,10 +1159,8 @@ print(
 
 
 # =========================================================
-# SAVE CHECKPOINT
+# COPY BEST MODEL TO MAIN CHECKPOINT
 # =========================================================
-
-checkpoint = Checkpoint()
 
 checkpoint.save(
     path="layla_checkpoint.json",
@@ -1101,6 +1169,60 @@ checkpoint.save(
     decoder=decoder
 )
 
+print(
+    "Best model copied to layla_checkpoint.json"
+)
+
+
+# =========================================================
+# HELPER: NEXT TOKEN
+# =========================================================
+
+def predict_next_token(
+    prompt,
+    allow_eos=True
+):
+
+    token_ids = tokenizer.encode_prompt(
+        prompt
+    )
+
+    vectors = embedding.encode(
+        token_ids
+    )
+
+    decoder_output = decoder.forward(
+        vectors
+    )
+
+    logits = decoder.logits(
+        decoder_output
+    )
+
+    if not logits:
+        return None
+
+    last_logits = list(
+        logits[-1]
+    )
+
+    eos_id = tokenizer.token_to_id.get(
+        "<EOS>"
+    )
+
+    if not allow_eos and eos_id is not None:
+
+        last_logits[eos_id] = (
+            float("-inf")
+        )
+
+    best_id = max(
+        range(len(last_logits)),
+        key=lambda index: last_logits[index]
+    )
+
+    return best_id
+
 
 # =========================================================
 # NEXT TOKEN TEST
@@ -1108,28 +1230,13 @@ checkpoint.save(
 
 test_text = "Hello Layla"
 
-test_token_ids = (
-    tokenizer.encode_prompt(
-        test_text
-    )
+test_token_ids = tokenizer.encode_prompt(
+    test_text
 )
 
-test_vectors = embedding.encode(
-    test_token_ids
-)
-
-test_decoder_output = decoder.forward(
-    test_vectors
-)
-
-test_logits = decoder.logits(
-    test_decoder_output
-)
-
-test_prediction_id = (
-    decoder.predict_next_token(
-        test_logits
-    )
+test_prediction_id = predict_next_token(
+    test_text,
+    allow_eos=True
 )
 
 test_prediction = (
@@ -1150,7 +1257,7 @@ print(
 )
 
 print(
-    "Prediction after training:",
+    "Prediction after best model:",
     test_prediction
 )
 
@@ -1168,22 +1275,9 @@ loaded_checkpoint.load(
     decoder=decoder
 )
 
-loaded_vectors = embedding.encode(
-    test_token_ids
-)
-
-loaded_output = decoder.forward(
-    loaded_vectors
-)
-
-loaded_logits = decoder.logits(
-    loaded_output
-)
-
-loaded_prediction_id = (
-    decoder.predict_next_token(
-        loaded_logits
-    )
+loaded_prediction_id = predict_next_token(
+    test_text,
+    allow_eos=True
 )
 
 loaded_prediction = (
@@ -1196,65 +1290,6 @@ loaded_prediction = (
 print(
     "Prediction after checkpoint load:",
     loaded_prediction
-)
-
-
-# =========================================================
-# INPUT TEST
-# =========================================================
-
-text = "Hello Layla"
-
-token_ids = tokenizer.encode_prompt(
-    text
-)
-
-vectors = embedding.encode(
-    token_ids
-)
-
-decoder_output = decoder.forward(
-    vectors
-)
-
-logits = decoder.logits(
-    decoder_output
-)
-
-next_token_id = (
-    decoder.predict_next_token(
-        logits
-    )
-)
-
-print(
-    "Input:",
-    text
-)
-
-print(
-    "Prompt token IDs:",
-    token_ids
-)
-
-print(
-    "Vocabulary size:",
-    len(
-        tokenizer.token_to_id
-    )
-)
-
-print(
-    "Predicted token ID:",
-    next_token_id
-)
-
-print(
-    "Predicted token:",
-    tokenizer.id_to_token.get(
-        next_token_id,
-        "<UNK>"
-    )
 )
 
 
@@ -1343,10 +1378,8 @@ print(
 
 for prompt, expected_token in diagnostic_tests:
 
-    prompt_ids = (
-        tokenizer.encode_prompt(
-            prompt
-        )
+    prompt_ids = tokenizer.encode_prompt(
+        prompt
     )
 
     prompt_vectors = embedding.encode(
@@ -1418,18 +1451,92 @@ for prompt, expected_token in diagnostic_tests:
 
 
 # =========================================================
-# TEXT GENERATION TEST
+# TEXT GENERATION
 # =========================================================
 
-generator = TextGenerator(
-    tokenizer=tokenizer,
-    embedding=embedding,
-    decoder=decoder
-)
-
-generated_text = generator.generate(
-    text="Hello Layla",
+def generate_without_immediate_eos(
+    prompt,
     max_new_tokens=10
+):
+
+    token_ids = tokenizer.encode_prompt(
+        prompt
+    )
+
+    generated_ids = []
+
+    for step in range(max_new_tokens):
+
+        vectors = embedding.encode(
+            token_ids
+        )
+
+        decoder_output = decoder.forward(
+            vectors
+        )
+
+        logits = decoder.logits(
+            decoder_output
+        )
+
+        if not logits:
+            break
+
+        last_logits = list(
+            logits[-1]
+        )
+
+        eos_id = tokenizer.token_to_id.get(
+            "<EOS>"
+        )
+
+        # -------------------------------------------------
+        # Do not allow immediate EOS.
+        #
+        # EOS remains available after at least
+        # one generated token.
+        # -------------------------------------------------
+
+        if (
+            step == 0
+            and eos_id is not None
+        ):
+
+            last_logits[eos_id] = (
+                float("-inf")
+            )
+
+        next_token_id = max(
+            range(len(last_logits)),
+            key=lambda index: last_logits[index]
+        )
+
+        if next_token_id == eos_id:
+
+            break
+
+        token_ids.append(
+            next_token_id
+        )
+
+        generated_ids.append(
+            next_token_id
+        )
+
+    return tokenizer.decode(
+        generated_ids
+    )
+
+
+# =========================================================
+# GENERATION TEST
+# =========================================================
+
+generated_text = (
+    generate_without_immediate_eos(
+        "Hello Layla",
+        max_new_tokens=10
+    )
 )
 
 print(
@@ -1517,9 +1624,11 @@ test_prompts = [
 
 for prompt in test_prompts:
 
-    result = generator.generate(
-        text=prompt,
-        max_new_tokens=10
+    result = (
+        generate_without_immediate_eos(
+            prompt,
+            max_new_tokens=10
+        )
     )
 
     print(
@@ -1551,28 +1660,9 @@ target_tests = [
 
 for prompt in target_tests:
 
-    prompt_ids = (
-        tokenizer.encode_prompt(
-            prompt
-        )
-    )
-
-    prompt_vectors = embedding.encode(
-        prompt_ids
-    )
-
-    prompt_output = decoder.forward(
-        prompt_vectors
-    )
-
-    prompt_logits = decoder.logits(
-        prompt_output
-    )
-
-    predicted_id = (
-        decoder.predict_next_token(
-            prompt_logits
-        )
+    predicted_id = predict_next_token(
+        prompt,
+        allow_eos=True
     )
 
     predicted_token = (
@@ -1584,6 +1674,36 @@ for prompt in target_tests:
 
     print(
         "Next-token test:",
+        prompt,
+        "->",
+        predicted_token
+    )
+
+
+# =========================================================
+# NON-EOS NEXT TOKEN TEST
+# =========================================================
+
+print(
+    "\nNon-EOS next-token test:"
+)
+
+for prompt in target_tests:
+
+    predicted_id = predict_next_token(
+        prompt,
+        allow_eos=False
+    )
+
+    predicted_token = (
+        tokenizer.id_to_token.get(
+            predicted_id,
+            "<UNK>"
+        )
+    )
+
+    print(
+        "Non-EOS test:",
         prompt,
         "->",
         predicted_token
